@@ -18,6 +18,8 @@
 #define VAR_HIGHLIGHT QUOTE(FUNC_SUBVAR(setting_highlight))
 #define VAR_TREE_MODE QUOTE(FUNC_SUBVAR(setting_tree_mode))
 
+#define VAR_SELECTED_FUNC QUOTE(FUNC_SUBVAR(selected_func))
+
 #define VAR_SAVED_FUNCS QUOTE(FUNC_SUBVAR(saved_func_vars))
 #define VAL_SAVED_FUNC_VAR(f) format["%1_%2",QUOTE(THIS_FUNC),f]
 
@@ -53,6 +55,8 @@ switch _mode do {
 		USE_CTRL(_ctrlComboLoad,IDC_COMBO_LOAD);
 		USE_CTRL(_ctrlComboHighlight,IDC_COMBO_HIGHLIGHT);
 		USE_CTRL(_ctrlComboTree,IDC_COMBO_TREE_MODE);
+		USE_CTRL(_ctrlButtonCollapse,IDC_BUTTON_TREE_COLLAPSE);
+		USE_CTRL(_ctrlButtonExpand,IDC_BUTTON_TREE_EXPAND);
 		USE_CTRL(_ctrlTree,IDC_TREE_VIEW);
 		USE_CTRL(_ctrlViewerLoadbar,IDC_STATIC_VIEWER_LOADBAR);
 		USE_CTRL(_ctrlButtonCopy,IDC_BUTTON_COPY);
@@ -93,13 +97,22 @@ switch _mode do {
 		_ctrlComboHighlight ctrlAddEventHandler ["LBSelChanged",{["highlightLBSelChanged",_this] call THIS_FUNC}];
 		_ctrlComboHighlight lbSetCurSel (profileNamespace getVariable [VAR_HIGHLIGHT,0]);
 
-				{_ctrlComboTree lbAdd _x} forEach [
+		{_ctrlComboTree lbAdd _x} forEach [
 			"CfgFunctions Hierarchy",
-			"Function Prefix Tags"
+			"CfgFunctions Parent Groups",
+			"Function Tags"
 		];
 		_ctrlComboTree ctrlSetTooltip "Sorting options";
 		_ctrlComboTree lbSetCurSel (profileNamespace getVariable [VAR_TREE_MODE,0]);
 		_ctrlComboTree ctrlAddEventHandler ["LBSelChanged",{["treeLBSelChanged",_this] call THIS_FUNC}];
+
+		_ctrlButtonCollapse ctrlSetText "\a3\3den\data\displays\display3den\tree_collapse_ca.paa";
+		_ctrlButtonCollapse ctrlSetTooltip "Collapse All";
+		_ctrlButtonCollapse ctrlAddEventHandler ["ButtonClick",{["collapseButtonClick",_this] call THIS_FUNC}];
+
+		_ctrlButtonExpand ctrlSetText "\a3\3den\data\displays\display3den\tree_expand_ca.paa";
+		_ctrlButtonExpand ctrlSetTooltip "Expand All";
+		_ctrlButtonExpand ctrlAddEventHandler ["ButtonClick",{["expandButtonClick",_this] call THIS_FUNC}];
 
 		_ctrlTree ctrlAddEventHandler ["TreeSelChanged",{["treeTVSelChanged",_this] call THIS_FUNC}];
 
@@ -157,7 +170,7 @@ switch _mode do {
 		USE_CTRL(_ctrlTree,IDC_TREE_VIEW);
 		USE_CTRL(_ctrlEditSearch,IDC_EDIT_SEARCH);
 		USE_CTRL(_ctrlComboTree,IDC_COMBO_TREE);
-
+	
 		private _searchTerm = ctrlText _ctrlEditSearch;
 		private _noSearch = _searchTerm == "";
 		private _mode = profileNamespace getVariable [VAR_TREE_MODE,_index];
@@ -211,7 +224,11 @@ switch _mode do {
 			};
 		};
 
+		private _data = _display getVariable [VAR_SELECTED_FUNC,[]];
 		tvClear _ctrlTree;
+		// bug fix: "tvCollapseAll" hides new entries
+		tvExpandAll _ctrlTree;
+
 		{
 			_x params ["_configName","_configData"];
 
@@ -228,6 +245,11 @@ switch _mode do {
 								_x params ["_fileName","_fileVar","_filePath"];
 								private _fileIndex = _ctrlTree tvAdd [[_configFileIndex,_rootIndex,_subIndex],_fileName];
 								_ctrlTree tvSetData [[_configFileIndex,_rootIndex,_subIndex,_fileIndex],str[_fileVar,_filePath]];
+
+								if (_data isEqualTo [_fileVar,_filePath]) then {
+									_ctrlTree tvExpand [_configFileIndex,_rootIndex,_subIndex];
+									_ctrlTree tvSetCurSel [_configFileIndex,_rootIndex,_subIndex,_fileIndex];
+								};
 							} forEach _subData;
 							[_configFileIndex,_rootIndex,_subIndex] call _finalizePath;
 						} foreach _rootData;
@@ -236,6 +258,35 @@ switch _mode do {
 					[_configFileIndex] call _finalizePath;
 				};
 				case 1:{
+					private _parents = [];
+
+					{
+						_x params ["","_rootTag","_rootData"];
+						{
+							_x params ["_parentName","_parentData"];
+							private _parentIndex = if (tolower _parentName in _parents) then {
+								_parents find tolower _parentName
+							} else {
+								private _index = _ctrlTree tvAdd [[],_parentName];
+								_parents set [_index,tolower _parentName];
+								_index
+							};
+							{
+								_x params ["_fileName","_fileVar","_filePath"];
+								private _fileIndex = _ctrlTree tvAdd [[_parentIndex],_fileVar];//format["%1 (%2)",_fileName,_rootTag]
+								_ctrlTree tvSetData [[_parentIndex,_fileIndex],str[_fileVar,_filePath]];
+
+								if (_data isEqualTo [_fileVar,_filePath]) then {
+									_ctrlTree tvExpand [_parentIndex];
+									_ctrlTree tvSetCurSel [_parentIndex,_fileIndex];
+								};
+							} forEach _parentData;
+							[_parentIndex] call _finalizePath;
+						} foreach _rootData;
+					} foreach _configData;
+					[] call _finalizePath;
+				};
+				case 2:{
 					private _tags = [];
 
 					{
@@ -253,6 +304,11 @@ switch _mode do {
 								_x params ["_fileName","_fileVar","_filePath"];
 								private _fileIndex = _ctrlTree tvAdd [[_rootIndex],_fileName];
 								_ctrlTree tvSetData [[_rootIndex,_fileIndex],str[_fileVar,_filePath]];
+
+								if (_data isEqualTo [_fileVar,_filePath]) then {
+									_ctrlTree tvExpand [_rootIndex];
+									_ctrlTree tvSetCurSel [_rootIndex,_fileIndex];
+								};
 							} forEach _subData;
 						} foreach _rootData;
 						[_rootIndex] call _finalizePath;
@@ -274,7 +330,23 @@ switch _mode do {
 		_params params ["_ctrlTree","_selectionPath"];
 		private _data = _ctrlTree tvData _selectionPath;
 		if (_data != "") then {
+			USE_DISPLAY(ctrlParent _ctrlTree);
+			_display setVariable [VAR_SELECTED_FUNC,parseSimpleArray _data];
 			["loadFunction"] call THIS_FUNC;
+		};
+	};
+
+
+	case "collapseButtonClick";
+	case "expandButtonClick":{
+		_params params ["_ctrlButton"];
+		USE_DISPLAY(ctrlParent _ctrlButton);
+		USE_CTRL(_ctrlTree,IDC_TREE_VIEW);
+
+		if (_mode == "expandButtonClick") then {
+			tvExpandAll _ctrlTree;
+		} else {
+			tvCollapseAll _ctrlTree;
 		};
 	};
 
@@ -306,6 +378,29 @@ switch _mode do {
 	};
 
 
+	case "themeLBSelChanged";
+	case "loadLBSelChanged";
+	case "highlightLBSelChanged";
+	case "treeLBSelChanged":{
+		_params params ["","_index"];
+
+		private _variable = switch _mode do {
+			case "themeLBSelChanged":{VAR_THEME};
+			case "loadLBSelChanged":{VAR_LOAD};
+			case "highlightLBSelChanged":{VAR_HIGHLIGHT};
+			case "treeLBSelChanged":{VAR_TREE_MODE};
+		};
+		profileNamespace setVariable [_variable,_index];
+		saveProfilenamespace;
+		switch _mode do {
+			case "themeLBSelChanged":{["loadTheme"] call THIS_FUNC};
+			case "loadLBSelChanged":{["loadFunction"] call THIS_FUNC};
+			case "highlightLBSelChanged":{["loadFunction"] call THIS_FUNC};
+			case "treeLBSelChanged":{["populateTree"] call THIS_FUNC};
+		};
+	};
+
+
 	case "loadTheme":{
 		USE_DISPLAY(THIS_DISPLAY);
 		USE_CTRL(_ctrlViewerBG,IDC_STATIC_VIEWER_BG);
@@ -325,30 +420,7 @@ switch _mode do {
 
 		["loadFunction"] call THIS_FUNC;
 	};
-	case "themeLBSelChanged":{
-		_params params ["","_index"];
-		profileNamespace setVariable [VAR_THEME,_index];
-		saveProfilenamespace;
-		["loadTheme"] call THIS_FUNC;
-	};
-	case "loadLBSelChanged":{
-		_params params ["","_index"];
-		profileNamespace setVariable [VAR_LOAD,_index];
-		saveProfilenamespace;
-		["loadFunction"] call THIS_FUNC;
-	};
-	case "highlightLBSelChanged":{
-		_params params ["","_index"];
-		profileNamespace setVariable [VAR_HIGHLIGHT,_index];
-		saveProfilenamespace;
-		["loadFunction"] call THIS_FUNC;
-	};
-	case "treeLBSelChanged":{
-		_params params ["","_index"];
-		profileNamespace setVariable [VAR_TREE_MODE,_index];
-		saveProfilenamespace;
-		["populateTree"] call THIS_FUNC;
-	};
+
 
 	case "loadFunction":{
 		USE_DISPLAY(THIS_DISPLAY);		
@@ -362,13 +434,14 @@ switch _mode do {
 		USE_CTRL(_ctrlViewerContent,IDC_STRUCTURED_VIEWER_CONTENT);
 		USE_CTRL(_ctrlViewerLoadbar,IDC_STATIC_VIEWER_LOADBAR);
 
-		private _data = _ctrlTree tvData tvCurSel _ctrlTree;
-		if (_data == "") exitWith {};
+			
+		private _data = _display getVariable [VAR_SELECTED_FUNC,[]];
+		if (_data isEqualTo []) exitWith {};
 
 		private _thread = _ctrlViewerLoadbar getVariable ["thread",scriptNull];
 		terminate _thread;
 
-		(parseSimpleArray _data) params ["_func","_file"];
+		_data params ["_func","_file"];
 		private _content = switch (lbCurSel _ctrlComboLoad) do {
 			case 1:{preprocessFile _file};
 			case 2:{preprocessFileLineNumbers _file};
@@ -620,15 +693,17 @@ switch _mode do {
 		};
 	};
 
+
 	case "recompileButtonClick":{
 		_params params ["_ctrl"];
 		USE_DISPLAY(ctrlParent _ctrl);
 		USE_CTRL(_ctrlTree,IDC_TREE_VIEW);
 		USE_CTRL(_ctrlViewerContent,IDC_STRUCTURED_VIEWER_CONTENT);
 
-		private _data = _ctrlTree tvData tvCurSel _ctrlTree;
-		if (_data == "") exitWith {};
-		(parseSimpleArray _data) params ["_func"];
+		private _data = _display getVariable [VAR_SELECTED_FUNC,[]];
+		if (_data isEqualTo []) exitWith {};
+
+		_data params ["_func"];
 		_func call BIS_fnc_recompile;
 
 		_ctrlViewerContent setVariable [VAL_SAVED_FUNC_VAR(_func),nil];
@@ -656,10 +731,10 @@ switch _mode do {
 		USE_CTRL(_ctrlTree,IDC_TREE_VIEW);
 		USE_CTRL(_ctrlComboLoad,IDC_COMBO_LOAD);
 
-		private _data = _ctrlTree tvData tvCurSel _ctrlTree;
-		if (_data == "") exitWith {};
-		private _array = parseSimpleArray _data;
-		private _file = _array # 1;
+		private _data = _display getVariable [VAR_SELECTED_FUNC,[]];
+		if (_data isEqualTo []) exitWith {};
+
+		private _file = _data # 1;
 		private _content = switch (lbCurSel _ctrlComboLoad) do {
 			case 1:{preprocessFile _file};
 			case 2:{preprocessFileLineNumbers _file};
@@ -667,9 +742,10 @@ switch _mode do {
 		};
 
 		// done like this so you can copy functions in MP too
-		uiNameSpace setVariable ["Display3DENCopy_data",[_array#0,_content]];
+		uiNameSpace setVariable ["Display3DENCopy_data",[_data#0,_content]];
 		(THIS_DISPLAY) createDisplay "Display3DENCopy";
 	};
+
 
 	case "stringReplace":{
 		_params params ["_input","_find","_replace"];

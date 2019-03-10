@@ -80,8 +80,20 @@ class CAU_displayExtendedFunctionViewer {
             idc=IDC_COMBO_TREE_MODE;
             x=CENTER_XA(DIALOG_W) + PX_WA(2);
             y=CENTER_YA(DIALOG_H) + PX_HA(SIZE_M) + PX_HA(SIZE_XXL) + PX_HA(2);
-            w=PX_WA((1/5*DIALOG_W));
+            w=PX_WA((1/5*DIALOG_W)) - PX_WA((SIZE_M*2));
             h=PX_HA(SIZE_M);
+        };
+        class collapseButton: ctrlButtonPicture {
+            idc=IDC_BUTTON_TREE_COLLAPSE;
+            colorBackground[]={0,0,0,0};
+            x=CENTER_XA(DIALOG_W) + PX_WA(2) + PX_WA((1/5*DIALOG_W)) - PX_WA((SIZE_M*2));
+            y=CENTER_YA(DIALOG_H) + PX_HA(SIZE_M) + PX_HA(SIZE_XXL) + PX_HA(2);
+            w=PX_WA(SIZE_M);
+            h=PX_HA(SIZE_M);
+        };
+        class expandButton: collapseButton {
+            idc=IDC_BUTTON_TREE_EXPAND;
+            x=CENTER_XA(DIALOG_W) + PX_WA(2) + PX_WA((1/5*DIALOG_W)) - PX_WA(SIZE_M);
         };
         class tree: ctrlTree {
             idc=IDC_TREE_VIEW;

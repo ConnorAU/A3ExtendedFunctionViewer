@@ -49,6 +49,7 @@ class ctrlButton;
 class ctrlButtonCancel;
 class ctrlButtonClose;
 class ctrlButtonSearch;
+class ctrlButtonPicture;
 
 class ctrlControlsGroup;
 class ctrlControlsGroupNoScrollbars;
