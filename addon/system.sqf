@@ -186,7 +186,7 @@ switch _mode do {
 	
 		private _searchTerm = ctrlText _ctrlEditSearch;
 		private _noSearch = _searchTerm == "";
-		private _mode = profileNamespace getVariable [VAR_TREE_MODE,_index];
+		private _mode = profileNamespace getVariable [VAR_TREE_MODE,lbCurSel _ctrlComboTree];
 
 		private _buildTreeData = {
 			params ["_config","_name"];
