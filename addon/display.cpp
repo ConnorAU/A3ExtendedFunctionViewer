@@ -71,9 +71,19 @@ class CAU_displayExtendedFunctionViewer {
             idc=IDC_COMBO_LOAD;
             x=CENTER_XA(DIALOG_W) + PX_WA(2) + PX_WA((1/5*DIALOG_W)) + PX_WA(3) + PX_WA((10*SIZE_M));
         };
-        class highlightCombo: themeCombo {
-            idc=IDC_COMBO_HIGHLIGHT;
-            x=CENTER_XA(DIALOG_W) + PX_WA(2) + PX_WA((1/5*DIALOG_W)) + PX_WA(4) + 2*(PX_WA((10*SIZE_M)));
+        class seperator1: ctrlStaticBackground {
+            x=CENTER_XA(DIALOG_W) + PX_WA(2) + PX_WA((1/5*DIALOG_W)) + PX_WA(4) + 2*(PX_WA((10*SIZE_M))) + PX_WA(1);
+            y=CENTER_YA(DIALOG_H) + PX_HA(SIZE_M) + PX_HA(1);
+            w=pixelW;
+            h=PX_HA(SIZE_M);
+        };
+        class highlightButton: ctrlButtonPicture {
+            idc=IDC_BUTTON_HIGHLIGHT;
+            colorBackground[]={0,0,0,0};
+            x=CENTER_XA(DIALOG_W) + PX_WA(2) + PX_WA((1/5*DIALOG_W)) + PX_WA(4) + 2*(PX_WA((10*SIZE_M))) + PX_WA(2);
+            y=CENTER_YA(DIALOG_H) + PX_HA(SIZE_M) + PX_HA(1);
+            w=PX_WA(SIZE_M);
+            h=PX_HA(SIZE_M);
         };
 
         class treeCombo: ctrlCombo {

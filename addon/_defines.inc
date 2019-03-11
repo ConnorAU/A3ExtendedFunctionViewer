@@ -36,7 +36,7 @@
 #define IDC_BUTTON_SEARCH               3
 #define IDC_COMBO_THEME                 4
 #define IDC_COMBO_LOAD                  5
-#define IDC_COMBO_HIGHLIGHT             6
+#define IDC_BUTTON_HIGHLIGHT            6
 #define IDC_COMBO_TREE_MODE             7
 #define IDC_BUTTON_TREE_COLLAPSE        8
 #define IDC_BUTTON_TREE_EXPAND          9

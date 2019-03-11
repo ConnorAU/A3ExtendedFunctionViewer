@@ -41,6 +41,9 @@
 #define VAL_MAGIC_VARS ["_this","_x","_foreachindex","_exception","_thisscript","_thisfsm","_thiseventhandler"]
 #define VAL_NULLS ["nil","controlnull","displaynull","grpnull","locationnull","netobjnull","objnull","scriptnull","tasknull","teammembernull","confignull"]
 
+#define VAL_SYNTAX_ON  "\cau\extendedfunctionviewer\a_highlight.paa"
+#define VAL_SYNTAX_OFF "\cau\extendedfunctionviewer\a_plain.paa"
+
 
 params[["_mode","",[""]],["_params",[]]];
 
@@ -53,7 +56,7 @@ switch _mode do {
 		USE_CTRL(_ctrlButtonSearch,IDC_BUTTON_SEARCH);
 		USE_CTRL(_ctrlComboTheme,IDC_COMBO_THEME);
 		USE_CTRL(_ctrlComboLoad,IDC_COMBO_LOAD);
-		USE_CTRL(_ctrlComboHighlight,IDC_COMBO_HIGHLIGHT);
+		USE_CTRL(_ctrlButtonHighlight,IDC_BUTTON_HIGHLIGHT);
 		USE_CTRL(_ctrlComboTree,IDC_COMBO_TREE_MODE);
 		USE_CTRL(_ctrlButtonCollapse,IDC_BUTTON_TREE_COLLAPSE);
 		USE_CTRL(_ctrlButtonExpand,IDC_BUTTON_TREE_EXPAND);
@@ -63,6 +66,8 @@ switch _mode do {
 		USE_CTRL(_ctrlButtonRecompile,IDC_BUTTON_RECOMPILE);
 		USE_CTRL(_ctrlButtonRecompileAll,IDC_BUTTON_RECOMPILE_ALL);
 		USE_CTRL(_ctrlButtonClose,IDC_BUTTON_CLOSE);
+
+		["initSettings"] call THIS_FUNC;
 
 		_ctrlTitle ctrlSetText "Extended Function Viewer"; 
 
@@ -89,13 +94,9 @@ switch _mode do {
 		_ctrlComboLoad ctrlAddEventHandler ["LBSelChanged",{["loadLBSelChanged",_this] call THIS_FUNC}];
 		_ctrlComboLoad lbSetCurSel (profileNamespace getVariable [VAR_LOAD,0]);
 
-		{_ctrlComboHighlight lbAdd _x} forEach [
-			"Syntax Highlighting: On",
-			"Syntax Highlighting: Off"
-		];
-		_ctrlComboHighlight ctrlSetTooltip "Syntax Highlighting";
-		_ctrlComboHighlight ctrlAddEventHandler ["LBSelChanged",{["highlightLBSelChanged",_this] call THIS_FUNC}];
-		_ctrlComboHighlight lbSetCurSel (profileNamespace getVariable [VAR_HIGHLIGHT,0]);
+		_ctrlButtonHighlight ctrlSetText ([VAL_SYNTAX_OFF,VAL_SYNTAX_ON] select (profilenamespace getVariable [VAR_HIGHLIGHT,true]));
+		_ctrlButtonHighlight ctrlSetTooltip "Toggle Syntax Highlighting";
+		_ctrlButtonHighlight ctrlAddEventHandler ["ButtonClick",{["highlightButtonClick",_this] call THIS_FUNC}];
 
 		{_ctrlComboTree lbAdd _x} forEach [
 			"CfgFunctions Hierarchy",
@@ -378,16 +379,26 @@ switch _mode do {
 	};
 
 
+	case "initSettings":{
+		{
+			if !((profileNamespace getVariable _x) isEqualType (_x#1)) then {
+				profilenamespace setVariable [_x#0,nil];
+			};
+		} foreach [
+			[VAR_THEME,0],
+			[VAR_LOAD,0],
+			[VAR_HIGHLIGHT,true],
+			[VAR_TREE_MODE,0]
+		]
+	};
 	case "themeLBSelChanged";
 	case "loadLBSelChanged";
-	case "highlightLBSelChanged";
 	case "treeLBSelChanged":{
 		_params params ["","_index"];
 
 		private _variable = switch _mode do {
 			case "themeLBSelChanged":{VAR_THEME};
 			case "loadLBSelChanged":{VAR_LOAD};
-			case "highlightLBSelChanged":{VAR_HIGHLIGHT};
 			case "treeLBSelChanged":{VAR_TREE_MODE};
 		};
 		profileNamespace setVariable [_variable,_index];
@@ -395,9 +406,17 @@ switch _mode do {
 		switch _mode do {
 			case "themeLBSelChanged":{["loadTheme"] call THIS_FUNC};
 			case "loadLBSelChanged":{["loadFunction"] call THIS_FUNC};
-			case "highlightLBSelChanged":{["loadFunction"] call THIS_FUNC};
 			case "treeLBSelChanged":{["populateTree"] call THIS_FUNC};
 		};
+	};
+	case "highlightButtonClick":{
+		_params params ["_ctrl"];
+
+		private _state = !(profilenamespace getVariable [VAR_HIGHLIGHT,true]);
+		_ctrl ctrlSetText ([VAL_SYNTAX_OFF,VAL_SYNTAX_ON] select _state);
+		profilenamespace setVariable [VAR_HIGHLIGHT,_state];
+
+		["loadFunction"] call THIS_FUNC;
 	};
 
 
@@ -425,7 +444,7 @@ switch _mode do {
 	case "loadFunction":{
 		USE_DISPLAY(THIS_DISPLAY);		
 		USE_CTRL(_ctrlComboLoad,IDC_COMBO_LOAD);
-		USE_CTRL(_ctrlComboHighlight,IDC_COMBO_HIGHLIGHT);
+		USE_CTRL(_ctrlButtonHighlight,IDC_BUTTON_HIGHLIGHT);
 		USE_CTRL(_ctrlViewerLoadbar,IDC_STATIC_VIEWER_LOADBAR);
 		USE_CTRL(_ctrlTree,IDC_TREE_VIEW);
 		USE_CTRL(_ctrlViewerFunc,IDC_STATIC_VIEWER_FUNC);
@@ -495,7 +514,7 @@ switch _mode do {
 		_ctrlViewerLoadbarP set [2,_ctrlViewerLoadbarW];
 		_ctrlViewerLoadbar ctrlSetPosition _ctrlViewerLoadbarP;
 		_ctrlViewerLoadbar ctrlCommit 0;
-		if (lbCurSel _ctrlComboHighlight == 0) then {
+		if (profileNamespace getVariable [VAR_HIGHLIGHT,true]) then {
 			_thread = ["highlightContent",[_func,_content,_display,_ctrlComboLoad,_ctrlViewerContent,_ctrlViewerLoadbar]] spawn THIS_FUNC;
 			_ctrlViewerLoadbar setVariable ["thread",_thread];
 		};
