@@ -16,6 +16,7 @@
 #define VAR_THEME QUOTE(FUNC_SUBVAR(setting_theme))
 #define VAR_LOAD QUOTE(FUNC_SUBVAR(setting_load))
 #define VAR_HIGHLIGHT QUOTE(FUNC_SUBVAR(setting_highlight))
+#define VAR_FONT_SIZE QUOTE(FUNC_SUBVAR(setting_font_size))
 #define VAR_TREE_MODE QUOTE(FUNC_SUBVAR(setting_tree_mode))
 
 #define VAR_SELECTED_FUNC QUOTE(FUNC_SUBVAR(selected_func))
@@ -57,6 +58,8 @@ switch _mode do {
 		USE_CTRL(_ctrlComboTheme,IDC_COMBO_THEME);
 		USE_CTRL(_ctrlComboLoad,IDC_COMBO_LOAD);
 		USE_CTRL(_ctrlButtonHighlight,IDC_BUTTON_HIGHLIGHT);
+		USE_CTRL(_ctrlButtonSizeDown,IDC_BUTTON_SIZEDOWN);
+		USE_CTRL(_ctrlButtonSizeUp,IDC_BUTTON_SIZEUP);
 		USE_CTRL(_ctrlComboTree,IDC_COMBO_TREE_MODE);
 		USE_CTRL(_ctrlButtonCollapse,IDC_BUTTON_TREE_COLLAPSE);
 		USE_CTRL(_ctrlButtonExpand,IDC_BUTTON_TREE_EXPAND);
@@ -97,6 +100,15 @@ switch _mode do {
 		_ctrlButtonHighlight ctrlSetText ([VAL_SYNTAX_OFF,VAL_SYNTAX_ON] select (profilenamespace getVariable [VAR_HIGHLIGHT,true]));
 		_ctrlButtonHighlight ctrlSetTooltip "Toggle Syntax Highlighting";
 		_ctrlButtonHighlight ctrlAddEventHandler ["ButtonClick",{["highlightButtonClick",_this] call THIS_FUNC}];
+
+
+		_ctrlButtonSizeDown ctrlSetText "\cau\extendedfunctionviewer\a_down.paa";
+		_ctrlButtonSizeDown ctrlSetTooltip "Decrease font size";
+		_ctrlButtonSizeDown ctrlAddEventHandler ["ButtonClick",{["sizeButtonClick",_this] call THIS_FUNC}];
+
+		_ctrlButtonSizeUp ctrlSetText "\cau\extendedfunctionviewer\a_up.paa";
+		_ctrlButtonSizeUp ctrlSetTooltip "Increase font size";
+		_ctrlButtonSizeUp ctrlAddEventHandler ["ButtonClick",{["sizeButtonClick",_this] call THIS_FUNC}];
 
 		{_ctrlComboTree lbAdd _x} forEach [
 			"CfgFunctions Hierarchy",
@@ -415,8 +427,38 @@ switch _mode do {
 		private _state = !(profilenamespace getVariable [VAR_HIGHLIGHT,true]);
 		_ctrl ctrlSetText ([VAL_SYNTAX_OFF,VAL_SYNTAX_ON] select _state);
 		profilenamespace setVariable [VAR_HIGHLIGHT,_state];
+		saveProfilenamespace;
 
 		["loadFunction"] call THIS_FUNC;
+	};
+	case "sizeButtonClick":{
+		_params params ["_ctrl"];
+
+		private _size = profileNamespace getVariable [VAR_FONT_SIZE,1];
+
+		_size = if (ctrlIDC _ctrl == IDC_BUTTON_SIZEDOWN) then {
+			(_size - 0.1) max 0.1;
+		} else {
+			(_size + 0.1) min 3;
+		};
+
+		profileNamespace setVariable [VAR_FONT_SIZE,_size];
+		saveProfilenamespace;
+
+		["clearSavedFuncs"] call THIS_FUNC;
+		["loadFunction"] call THIS_FUNC;
+	};
+
+
+	case "clearSavedFuncs":{
+		USE_DISPLAY(THIS_DISPLAY);
+		USE_CTRL(_ctrlViewerContent,IDC_STRUCTURED_VIEWER_CONTENT);
+
+		{
+			_ctrlViewerContent setVariable [_x,nil];
+			false
+		} count (_ctrlViewerContent getVariable [VAR_SAVED_FUNCS,[]]);
+		_ctrlViewerContent setVariable [VAR_SAVED_FUNCS,[]];
 	};
 
 
@@ -470,18 +512,24 @@ switch _mode do {
 		_ctrlViewerFunc ctrlSetText _func;
 		_ctrlViewerPath ctrlSetText _file;
 
+		private _fontSize = profileNamespace getVariable [VAR_FONT_SIZE,1];
+
 		private _text = ["replaceStructuredCharacters",_content] call THIS_FUNC;
-		_text = ["stringReplace",[_text,toString[10],"<br/>"]] call THIS_FUNC;
+
+		// some files dont use [13,10] new lines :(
+		_text = ["stringReplace",[_text,tostring[13],""]] call THIS_FUNC;
+		// blank lines dont maintain original line height on modified sizes
+		_text = ["stringReplace",[_text,tostring[10],"─<br/>"]] call THIS_FUNC;
 		_text = ["stringReplace",[_text,toString[9],"&#32;&#32;&#32;&#32;"]] call THIS_FUNC;
 		_text = ["stringReplace",[_text,"    ","&#32;&#32;&#32;&#32;"]] call THIS_FUNC;
-		_text = "<t color='"+(["themeColour",""] call THIS_FUNC)+"'>"+_text+"</t>";
+		_text = format["<t color='%1' size='%2'>",["themeColour",""] call THIS_FUNC,_fontSize]+_text+"</t>";
 
 		private _lineCount = [];
 		for "_i" from 1 to (["stringCount",[_text,"<br/>"]] call THIS_FUNC)+1 do {
 			_lineCount pushBack str _i;
 		};
-		_lineCount = "<t color='"+(["themeColour","lineNumber"] call THIS_FUNC)+"'>"+(_lineCount joinString "<br/>")+"</t>";
-		
+		_lineCount = format["<t color='%1' size='%2'>",["themeColour","lineNumber"] call THIS_FUNC,_fontSize]+(_lineCount joinString "<br/>")+"</t>";
+
 		_ctrlViewerLines ctrlSetStructuredText parseText _lineCount;
 		_ctrlViewerContent ctrlSetStructuredText parseText _text;
 
@@ -666,8 +714,10 @@ switch _mode do {
 			];
 		} foreach _output;
 
-		_output = ["<t color='"+(["themeColour",""] call THIS_FUNC)+"'>"] + _output + ["</t>"];
-		_output = ["stringReplace",[_output joinstring "",toString[10],"<br/>"]] call THIS_FUNC;
+		_output = [format["<t color='%1' size='%2'>",["themeColour",""] call THIS_FUNC,profileNamespace getVariable [VAR_FONT_SIZE,1]]] + _output + ["</t>"];
+		_output = ["stringReplace",[_output joinstring "",tostring[13],""]] call THIS_FUNC;
+		// blank lines dont maintain original line height on modified sizes
+		_output = ["stringReplace",[_output,toString[10],"─<br/>"]] call THIS_FUNC;
 		_output = ["stringReplace",[_output,toString[9],"&#32;&#32;&#32;&#32;"]] call THIS_FUNC;
 
 		_ctrlViewerContent ctrlSetStructuredText parseText _output;
@@ -731,17 +781,7 @@ switch _mode do {
 	case "recompileAllButtonClick":{
 		1 call BIS_fnc_recompile;
 		
-		_params params ["_ctrl"];
-		USE_DISPLAY(ctrlParent _ctrl);
-		USE_CTRL(_ctrlTree,IDC_TREE_VIEW);
-		USE_CTRL(_ctrlViewerContent,IDC_STRUCTURED_VIEWER_CONTENT);
-
-		{
-			_ctrlViewerContent setVariable [_x,nil];
-			false
-		} count (_ctrlViewerContent getVariable [VAR_SAVED_FUNCS,[]]);
-		_ctrlViewerContent setVariable [VAR_SAVED_FUNCS,[]];
-
+		["clearSavedFuncs"] call THIS_FUNC;
 		["loadFunction"] call THIS_FUNC;
 	};
 	case "copyButtonClick":{

@@ -85,6 +85,14 @@ class CAU_displayExtendedFunctionViewer {
             w=PX_WA(SIZE_M);
             h=PX_HA(SIZE_M);
         };
+        class sizeDownButton: highlightButton {
+            idc=IDC_BUTTON_SIZEDOWN;
+            x=CENTER_XA(DIALOG_W) + PX_WA(2) + PX_WA((1/5*DIALOG_W)) + PX_WA(4) + 2*(PX_WA((10*SIZE_M))) + PX_WA(3) + PX_WA(SIZE_M);
+        };
+        class sizeUpButton: highlightButton {
+            idc=IDC_BUTTON_SIZEUP;
+            x=CENTER_XA(DIALOG_W) + PX_WA(2) + PX_WA((1/5*DIALOG_W)) + PX_WA(4) + 2*(PX_WA((10*SIZE_M))) + PX_WA(4) + 2*(PX_WA(SIZE_M));
+        };
 
         class treeCombo: ctrlCombo {
             idc=IDC_COMBO_TREE_MODE;
