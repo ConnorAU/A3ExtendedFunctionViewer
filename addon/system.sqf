@@ -70,6 +70,8 @@ switch _mode do {
 		USE_CTRL(_ctrlButtonRecompileAll,IDC_BUTTON_RECOMPILE_ALL);
 		USE_CTRL(_ctrlButtonClose,IDC_BUTTON_CLOSE);
 
+		_ctrlViewerLoadbar setVariable ["width",ctrlPosition _ctrlViewerLoadbar # 2];
+
 		["initSettings"] call THIS_FUNC;
 
 		_ctrlTitle ctrlSetText "Extended Function Viewer"; 
@@ -128,8 +130,6 @@ switch _mode do {
 		_ctrlButtonExpand ctrlAddEventHandler ["ButtonClick",{["expandButtonClick",_this] call THIS_FUNC}];
 
 		_ctrlTree ctrlAddEventHandler ["TreeSelChanged",{["treeTVSelChanged",_this] call THIS_FUNC}];
-
-		_ctrlViewerLoadbar setVariable ["width",ctrlPosition _ctrlViewerLoadbar # 2];
 
 		_ctrlButtonCopy ctrlAddEventHandler ["ButtonClick",{["copyButtonClick",_this] call THIS_FUNC}];
 		_ctrlButtonClose ctrlAddEventHandler ["ButtonClick",{(ctrlParent(_this#0)) closeDisplay 2}];
@@ -237,7 +237,7 @@ switch _mode do {
 			};
 		};
 
-		private _data = _display getVariable [VAR_SELECTED_FUNC,[]];
+		private _data = uiNamespace getVariable [VAR_SELECTED_FUNC,[]];
 		tvClear _ctrlTree;
 		// bug fix: "tvCollapseAll" hides new entries
 		tvExpandAll _ctrlTree;
@@ -344,7 +344,7 @@ switch _mode do {
 		private _data = _ctrlTree tvData _selectionPath;
 		if (_data != "") then {
 			USE_DISPLAY(ctrlParent _ctrlTree);
-			_display setVariable [VAR_SELECTED_FUNC,parseSimpleArray _data];
+			uiNamespace setVariable [VAR_SELECTED_FUNC,parseSimpleArray _data];
 			["loadFunction"] call THIS_FUNC;
 		};
 	};
@@ -487,16 +487,15 @@ switch _mode do {
 		USE_DISPLAY(THIS_DISPLAY);		
 		USE_CTRL(_ctrlComboLoad,IDC_COMBO_LOAD);
 		USE_CTRL(_ctrlButtonHighlight,IDC_BUTTON_HIGHLIGHT);
-		USE_CTRL(_ctrlViewerLoadbar,IDC_STATIC_VIEWER_LOADBAR);
 		USE_CTRL(_ctrlTree,IDC_TREE_VIEW);
+		USE_CTRL(_ctrlViewerLoadbar,IDC_STATIC_VIEWER_LOADBAR);
 		USE_CTRL(_ctrlViewerFunc,IDC_STATIC_VIEWER_FUNC);
 		USE_CTRL(_ctrlViewerPath,IDC_STATIC_VIEWER_PATH);
 		USE_CTRL(_ctrlViewerLines,IDC_STRUCTURED_VIEWER_LINES);
 		USE_CTRL(_ctrlViewerContent,IDC_STRUCTURED_VIEWER_CONTENT);
-		USE_CTRL(_ctrlViewerLoadbar,IDC_STATIC_VIEWER_LOADBAR);
 
 			
-		private _data = _display getVariable [VAR_SELECTED_FUNC,[]];
+		private _data = uiNamespace getVariable [VAR_SELECTED_FUNC,[]];
 		if (_data isEqualTo []) exitWith {};
 
 		private _thread = _ctrlViewerLoadbar getVariable ["thread",scriptNull];
@@ -769,7 +768,7 @@ switch _mode do {
 		USE_CTRL(_ctrlTree,IDC_TREE_VIEW);
 		USE_CTRL(_ctrlViewerContent,IDC_STRUCTURED_VIEWER_CONTENT);
 
-		private _data = _display getVariable [VAR_SELECTED_FUNC,[]];
+		private _data = uiNamespace getVariable [VAR_SELECTED_FUNC,[]];
 		if (_data isEqualTo []) exitWith {};
 
 		_data params ["_func"];
@@ -790,7 +789,7 @@ switch _mode do {
 		USE_CTRL(_ctrlTree,IDC_TREE_VIEW);
 		USE_CTRL(_ctrlComboLoad,IDC_COMBO_LOAD);
 
-		private _data = _display getVariable [VAR_SELECTED_FUNC,[]];
+		private _data = uiNamespace getVariable [VAR_SELECTED_FUNC,[]];
 		if (_data isEqualTo []) exitWith {};
 
 		private _file = _data # 1;
