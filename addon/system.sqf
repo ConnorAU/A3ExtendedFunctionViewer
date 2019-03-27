@@ -176,6 +176,9 @@ switch _mode do {
 	case "onLoad":{
 		uiNamespace setVariable [QUOTE(DISPLAY_NAME),_params#0];
 	};
+	case "onUnload":{
+		saveProfileNamespace;
+	};
 
 
 	case "populateTree":{
@@ -237,7 +240,7 @@ switch _mode do {
 			};
 		};
 
-		private _data = uiNamespace getVariable [VAR_SELECTED_FUNC,[]];
+		private _data = profileNamespace getVariable [VAR_SELECTED_FUNC,[]];
 		tvClear _ctrlTree;
 		// bug fix: "tvCollapseAll" hides new entries
 		tvExpandAll _ctrlTree;
@@ -344,7 +347,7 @@ switch _mode do {
 		private _data = _ctrlTree tvData _selectionPath;
 		if (_data != "") then {
 			USE_DISPLAY(ctrlParent _ctrlTree);
-			uiNamespace setVariable [VAR_SELECTED_FUNC,parseSimpleArray _data];
+			profileNamespace setVariable [VAR_SELECTED_FUNC,parseSimpleArray _data];
 			["loadFunction"] call THIS_FUNC;
 		};
 	};
@@ -495,7 +498,7 @@ switch _mode do {
 		USE_CTRL(_ctrlViewerContent,IDC_STRUCTURED_VIEWER_CONTENT);
 
 			
-		private _data = uiNamespace getVariable [VAR_SELECTED_FUNC,[]];
+		private _data = profileNamespace getVariable [VAR_SELECTED_FUNC,[]];
 		if (_data isEqualTo []) exitWith {};
 
 		private _thread = _ctrlViewerLoadbar getVariable ["thread",scriptNull];
@@ -768,7 +771,7 @@ switch _mode do {
 		USE_CTRL(_ctrlTree,IDC_TREE_VIEW);
 		USE_CTRL(_ctrlViewerContent,IDC_STRUCTURED_VIEWER_CONTENT);
 
-		private _data = uiNamespace getVariable [VAR_SELECTED_FUNC,[]];
+		private _data = profileNamespace getVariable [VAR_SELECTED_FUNC,[]];
 		if (_data isEqualTo []) exitWith {};
 
 		_data params ["_func"];
@@ -789,7 +792,7 @@ switch _mode do {
 		USE_CTRL(_ctrlTree,IDC_TREE_VIEW);
 		USE_CTRL(_ctrlComboLoad,IDC_COMBO_LOAD);
 
-		private _data = uiNamespace getVariable [VAR_SELECTED_FUNC,[]];
+		private _data = profileNamespace getVariable [VAR_SELECTED_FUNC,[]];
 		if (_data isEqualTo []) exitWith {};
 
 		private _file = _data # 1;

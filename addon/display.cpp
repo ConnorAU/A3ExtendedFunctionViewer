@@ -9,6 +9,7 @@
 class CAU_displayExtendedFunctionViewer {
     idd=-1;
     onLoad="['onLoad',_this] call CAU_xFuncViewer_fnc_system";
+    onUnload="['onUnload',_this] call CAU_xFuncViewer_fnc_system";
 	enableSimulation=0;
 
     #define DIALOG_W ((safezoneW/GRID_W) - 10)
