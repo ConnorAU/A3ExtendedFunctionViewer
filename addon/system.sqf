@@ -22,6 +22,7 @@
 #define VAR_INIT_COMPLETE QUOTE(FUNC_SUBVAR(init_complete))
 
 #define VAR_SELECTED_FUNC QUOTE(FUNC_SUBVAR(selected_func))
+#define VAR_SELECTED_FUNC_HISTORY QUOTE(FUNC_SUBVAR(selected_func_history))
 
 #define VAR_SAVED_FUNCS QUOTE(FUNC_SUBVAR(saved_func_vars))
 #define VAL_SAVED_FUNC_VAR(f) format["%1_%2",QUOTE(THIS_FUNC),f]
@@ -117,7 +118,8 @@ switch _mode do {
 		{_ctrlComboTree lbAdd _x} forEach [
 			"CfgFunctions Hierarchy",
 			"CfgFunctions Parent Groups",
-			"Function Tags"
+			"Function Tags",
+			"Viewed Function History"
 		];
 		_ctrlComboTree ctrlSetTooltip "Sorting options";
 		_ctrlComboTree lbSetCurSel (profileNamespace getVariable [VAR_TREE_MODE,0]);
@@ -319,6 +321,35 @@ switch _mode do {
 					} foreach _configData;
 					[] call _finalizePath;
 				};
+				case 3:{
+					private _history = profileNamespace getVariable [VAR_SELECTED_FUNC_HISTORY,[]];
+					if (count _history > 0) then {
+						private _loadedFuncs = [];
+
+						// Identify functions that exist so we don't list fuctions from mods that are no longer loaded
+						{
+							_x params ["","","_rootData"];
+							{
+								_x params ["","_subData"];
+								{
+									_x params ["","_fileVar","_filePath"];
+									if ([_fileVar,_filePath] in _history) then {
+										_loadedFuncs pushback [_fileVar,_filePath];
+									};
+								} foreach _subData;
+							} foreach _rootData;
+						} foreach _configData;
+
+						// Add rows in the last viewed order
+						{
+							if (_x in _loadedFuncs) then {
+								_x params ["_fileVar","_filePath"];
+								private _fileIndex = _ctrlTree tvAdd [[],_fileVar];
+								_ctrlTree tvSetData [[_fileIndex],str[_fileVar,_filePath]];
+							};
+						} forEach _history;
+					};
+				};
 			};
 		} forEach [
 			[configFile,"configFile"] call _buildTreeData,
@@ -353,7 +384,18 @@ switch _mode do {
 		private _data = _ctrlTree tvData _selectionPath;
 		if (_data != "") then {
 			USE_DISPLAY(ctrlParent _ctrlTree);
-			profileNamespace setVariable [VAR_SELECTED_FUNC,parseSimpleArray _data];
+
+			_data = parseSimpleArray _data;
+			profileNamespace setVariable [VAR_SELECTED_FUNC,_data];
+
+			// Add function to history if not already viewing history			
+			private _mode = profileNamespace getVariable [VAR_TREE_MODE,-1];
+			if (_mode != 3) then {
+				private _history = profileNamespace getVariable [VAR_SELECTED_FUNC_HISTORY,[]];
+				_history = ([_data] + (_history - [_data])) select [0,100]; // save last 100 viewed functions
+				profileNamespace setVariable [VAR_SELECTED_FUNC_HISTORY,_history];
+			};
+			
 			["loadFunction"] call THIS_FUNC;
 		};
 	};
