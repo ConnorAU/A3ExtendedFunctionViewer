@@ -19,6 +19,8 @@
 #define VAR_FONT_SIZE QUOTE(FUNC_SUBVAR(setting_font_size))
 #define VAR_TREE_MODE QUOTE(FUNC_SUBVAR(setting_tree_mode))
 
+#define VAR_INIT_COMPLETE QUOTE(FUNC_SUBVAR(init_complete))
+
 #define VAR_SELECTED_FUNC QUOTE(FUNC_SUBVAR(selected_func))
 
 #define VAR_SAVED_FUNCS QUOTE(FUNC_SUBVAR(saved_func_vars))
@@ -171,6 +173,8 @@ switch _mode do {
 		_display setVariable ["supportedOperators",_supportedOperators];
 		_display setVariable ["supportedCommands",_supportedCommands];
 
+		_display setVariable [VAR_INIT_COMPLETE,true];
+
 		["populateTree"] call THIS_FUNC;
 	};
 	case "onLoad":{
@@ -186,7 +190,7 @@ switch _mode do {
 		USE_CTRL(_ctrlTree,IDC_TREE_VIEW);
 		USE_CTRL(_ctrlEditSearch,IDC_EDIT_SEARCH);
 		USE_CTRL(_ctrlComboTree,IDC_COMBO_TREE);
-	
+
 		private _searchTerm = ctrlText _ctrlEditSearch;
 		private _noSearch = _searchTerm == "";
 		private _mode = profileNamespace getVariable [VAR_TREE_MODE,lbCurSel _ctrlComboTree];
@@ -240,7 +244,6 @@ switch _mode do {
 			};
 		};
 
-		private _data = profileNamespace getVariable [VAR_SELECTED_FUNC,[]];
 		tvClear _ctrlTree;
 		// bug fix: "tvCollapseAll" hides new entries
 		tvExpandAll _ctrlTree;
@@ -261,11 +264,6 @@ switch _mode do {
 								_x params ["_fileName","_fileVar","_filePath"];
 								private _fileIndex = _ctrlTree tvAdd [[_configFileIndex,_rootIndex,_subIndex],_fileName];
 								_ctrlTree tvSetData [[_configFileIndex,_rootIndex,_subIndex,_fileIndex],str[_fileVar,_filePath]];
-
-								if (_data isEqualTo [_fileVar,_filePath]) then {
-									_ctrlTree tvExpand [_configFileIndex,_rootIndex,_subIndex];
-									_ctrlTree tvSetCurSel [_configFileIndex,_rootIndex,_subIndex,_fileIndex];
-								};
 							} forEach _subData;
 							[_configFileIndex,_rootIndex,_subIndex] call _finalizePath;
 						} foreach _rootData;
@@ -291,11 +289,6 @@ switch _mode do {
 								_x params ["_fileName","_fileVar","_filePath"];
 								private _fileIndex = _ctrlTree tvAdd [[_parentIndex],_fileVar];//format["%1 (%2)",_fileName,_rootTag]
 								_ctrlTree tvSetData [[_parentIndex,_fileIndex],str[_fileVar,_filePath]];
-
-								if (_data isEqualTo [_fileVar,_filePath]) then {
-									_ctrlTree tvExpand [_parentIndex];
-									_ctrlTree tvSetCurSel [_parentIndex,_fileIndex];
-								};
 							} forEach _parentData;
 							[_parentIndex] call _finalizePath;
 						} foreach _rootData;
@@ -320,11 +313,6 @@ switch _mode do {
 								_x params ["_fileName","_fileVar","_filePath"];
 								private _fileIndex = _ctrlTree tvAdd [[_rootIndex],_fileName];
 								_ctrlTree tvSetData [[_rootIndex,_fileIndex],str[_fileVar,_filePath]];
-
-								if (_data isEqualTo [_fileVar,_filePath]) then {
-									_ctrlTree tvExpand [_rootIndex];
-									_ctrlTree tvSetCurSel [_rootIndex,_fileIndex];
-								};
 							} forEach _subData;
 						} foreach _rootData;
 						[_rootIndex] call _finalizePath;
@@ -332,15 +320,33 @@ switch _mode do {
 					[] call _finalizePath;
 				};
 			};
-
-			if !_noSearch then {
-				tvExpandAll _ctrlTree;
-			};
 		} forEach [
 			[configFile,"configFile"] call _buildTreeData,
 			[campaignConfigFile,"campaignConfigFile"] call _buildTreeData,
 			[missionConfigFile,"missionConfigFile"] call _buildTreeData
 		];
+
+		if !_noSearch then {
+			tvExpandAll _ctrlTree;
+		};
+
+		private _data = profileNamespace getVariable [VAR_SELECTED_FUNC,[]];
+		if (_data isEqualTypeParams ["",""]) then {
+			_data = str _data;
+			private _searchPath = {
+				for "_i" from 0 to (_ctrlTree tvCount _this) do {
+					private _path = _this + [_i];
+					if (_data isEqualTo (_ctrlTree tvData _path)) then {
+						_ctrlTree tvExpand _this;
+						_ctrlTree tvSetCurSel _path;
+						breakTo "selectLastFunction";
+					};
+					_path call _searchPath;
+				};
+			};
+			scopeName "selectLastFunction";
+			[] call _searchPath;
+		};
 	};
 	case "treeTVSelChanged":{
 		_params params ["_ctrlTree","_selectionPath"];
@@ -417,7 +423,6 @@ switch _mode do {
 			case "treeLBSelChanged":{VAR_TREE_MODE};
 		};
 		profileNamespace setVariable [_variable,_index];
-		saveProfilenamespace;
 		switch _mode do {
 			case "themeLBSelChanged":{["loadTheme"] call THIS_FUNC};
 			case "loadLBSelChanged":{["loadFunction"] call THIS_FUNC};
@@ -430,7 +435,6 @@ switch _mode do {
 		private _state = !(profilenamespace getVariable [VAR_HIGHLIGHT,true]);
 		_ctrl ctrlSetText ([VAL_SYNTAX_OFF,VAL_SYNTAX_ON] select _state);
 		profilenamespace setVariable [VAR_HIGHLIGHT,_state];
-		saveProfilenamespace;
 
 		["loadFunction"] call THIS_FUNC;
 	};
@@ -446,7 +450,6 @@ switch _mode do {
 		};
 
 		profileNamespace setVariable [VAR_FONT_SIZE,_size];
-		saveProfilenamespace;
 
 		["clearSavedFuncs"] call THIS_FUNC;
 		["loadFunction"] call THIS_FUNC;
@@ -497,6 +500,7 @@ switch _mode do {
 		USE_CTRL(_ctrlViewerLines,IDC_STRUCTURED_VIEWER_LINES);
 		USE_CTRL(_ctrlViewerContent,IDC_STRUCTURED_VIEWER_CONTENT);
 
+		if !(_display getVariable [VAR_INIT_COMPLETE,false]) exitWith {};
 			
 		private _data = profileNamespace getVariable [VAR_SELECTED_FUNC,[]];
 		if (_data isEqualTo []) exitWith {};
