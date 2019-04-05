@@ -50,6 +50,7 @@
 #define IDC_STRUCTURED_VIEWER_CONTENT   17
 #define IDC_STATIC_VIEWER_LOADBAR       18
 #define IDC_BUTTON_COPY                 19
-#define IDC_BUTTON_RECOMPILE            20
-#define IDC_BUTTON_RECOMPILE_ALL        21
-#define IDC_BUTTON_CLOSE                22
+#define IDC_BUTTON_EXECUTE              20
+#define IDC_BUTTON_RECOMPILE            21
+#define IDC_BUTTON_RECOMPILE_ALL        22
+#define IDC_BUTTON_CLOSE                23

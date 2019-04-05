@@ -13,7 +13,7 @@ class CfgPatches {
         url="https://steamcommunity.com/id/_connor";
 
 		requiredVersion=0.01;
-		requiredAddons[]={"A3_3DEN","A3_Ui_F"};
+		requiredAddons[]={"A3_3DEN","A3_Ui_F","CAU_UserInputMenus"};
 		units[]={};
 		weapons[]={};
 	};

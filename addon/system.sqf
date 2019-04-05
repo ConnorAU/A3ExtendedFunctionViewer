@@ -69,6 +69,7 @@ switch _mode do {
 		USE_CTRL(_ctrlTree,IDC_TREE_VIEW);
 		USE_CTRL(_ctrlViewerLoadbar,IDC_STATIC_VIEWER_LOADBAR);
 		USE_CTRL(_ctrlButtonCopy,IDC_BUTTON_COPY);
+		USE_CTRL(_ctrlButtonExecute,IDC_BUTTON_EXECUTE);
 		USE_CTRL(_ctrlButtonRecompile,IDC_BUTTON_RECOMPILE);
 		USE_CTRL(_ctrlButtonRecompileAll,IDC_BUTTON_RECOMPILE_ALL);
 		USE_CTRL(_ctrlButtonClose,IDC_BUTTON_CLOSE);
@@ -134,6 +135,9 @@ switch _mode do {
 		_ctrlButtonExpand ctrlAddEventHandler ["ButtonClick",{["expandButtonClick",_this] call THIS_FUNC}];
 
 		_ctrlTree ctrlAddEventHandler ["TreeSelChanged",{["treeTVSelChanged",_this] call THIS_FUNC}];
+
+		_ctrlButtonExecute setVariable ["text",ctrlText _ctrlButtonExecute];
+		_ctrlButtonExecute ctrlAddEventHandler ["ButtonClick",{["executeButtonClick",_this] call THIS_FUNC}];
 
 		_ctrlButtonCopy ctrlAddEventHandler ["ButtonClick",{["copyButtonClick",_this] call THIS_FUNC}];
 		_ctrlButtonClose ctrlAddEventHandler ["ButtonClick",{(ctrlParent(_this#0)) closeDisplay 2}];
@@ -814,7 +818,6 @@ switch _mode do {
 	case "recompileButtonClick":{
 		_params params ["_ctrl"];
 		USE_DISPLAY(ctrlParent _ctrl);
-		USE_CTRL(_ctrlTree,IDC_TREE_VIEW);
 		USE_CTRL(_ctrlViewerContent,IDC_STRUCTURED_VIEWER_CONTENT);
 
 		private _data = profileNamespace getVariable [VAR_SELECTED_FUNC,[]];
@@ -835,7 +838,6 @@ switch _mode do {
 	case "copyButtonClick":{
 		_params params ["_ctrl"];
 		USE_DISPLAY(ctrlParent _ctrl);
-		USE_CTRL(_ctrlTree,IDC_TREE_VIEW);
 		USE_CTRL(_ctrlComboLoad,IDC_COMBO_LOAD);
 
 		private _data = profileNamespace getVariable [VAR_SELECTED_FUNC,[]];
@@ -851,6 +853,62 @@ switch _mode do {
 		// done like this so you can copy functions in MP too
 		uiNameSpace setVariable ["Display3DENCopy_data",[_data#0,_content]];
 		(THIS_DISPLAY) createDisplay "Display3DENCopy";
+	};
+	case "executeButtonClick":{
+		_params params ["_ctrlButtonExecute"];
+
+		private _data = profileNamespace getVariable [VAR_SELECTED_FUNC,[]];
+		if (_data isEqualTo []) exitWith {};
+
+		if (isNil "CAU_UserInputMenus_fnc_text") exitWith {
+			[
+				"<a href='https://steamcommunity.com/sharedfiles/filedetails/?id=1673595418'>User Input Menus</a> is required to execute functions.",
+				"Missing Mod"
+			] spawn BIS_fnc_guiMessage;
+		};
+
+		[
+			false,
+			"Function Arguments",
+			compile ("
+				if _confirmed then {
+					['executeArgumentProvided',[_text,'"+(_data#0)+"']] call "+QUOTE(THIS_FUNC)+";
+				};
+			"),
+			"Execute","",
+			ctrlParent _ctrlButtonExecute
+		] call CAU_UserInputMenus_fnc_text;
+	};
+	case "executeArgumentProvided":{
+		_params params ["_text","_func"];
+
+		USE_DISPLAY(THIS_DISPLAY);
+		USE_CTRL(_ctrlButtonExecute,IDC_BUTTON_EXECUTE);
+
+		_ctrlButtonExecute ctrlEnable false;
+		_ctrlButtonExecute ctrlSetText "Executing...";
+
+		// spawn to ensure no errors occur from unscheduled execution
+		[_ctrlButtonExecute,_text,_func] spawn {
+			params ["_ctrlButtonExecute","_text","_func"];
+
+			private _arguments = call compile _text;
+			private _code = missionNameSpace getVariable [_func,{}];
+
+			private _tick = diag_tickTime;
+			private _return = if (isNil "_arguments") then {call _code} else {_arguments call _code};
+			private _duration = (diag_tickTime - _tick) * 1000;
+
+			_ctrlButtonExecute ctrlEnable true;
+			_ctrlButtonExecute ctrlSetText (_ctrlButtonExecute getVariable "text");
+
+			if (isNil "_return") then {
+				_return = text "";
+			};
+
+			uiNameSpace setVariable ["Display3DENCopy_data",[format["Return of %1 (%2ms)",_func,_duration toFixed 4],str _return]];
+			(THIS_DISPLAY) createDisplay "Display3DENCopy";
+		};
 	};
 
 

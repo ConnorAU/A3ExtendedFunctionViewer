@@ -219,10 +219,15 @@ class CAU_displayExtendedFunctionViewer {
 			text="Recompile Selected";
             x=CENTER_XA(DIALOG_W) + PX_WA(DIALOG_W) - (PX_WA((8*SIZE_M))*3) - PX_WA(3);
         };
+        class buttonExecute: buttonRecompileAll {
+            idc=IDC_BUTTON_EXECUTE;
+			text="Execute Selected";
+            x=CENTER_XA(DIALOG_W) + PX_WA(DIALOG_W) - (PX_WA((8*SIZE_M))*4) - PX_WA(4);
+        };
         class buttonCopyToClipboard: buttonRecompileAll {
             idc=IDC_BUTTON_COPY;
 			text="Copy to Clipboard";
-            x=CENTER_XA(DIALOG_W) + PX_WA(DIALOG_W) - (PX_WA((8*SIZE_M))*4) - PX_WA(4);
+            x=CENTER_XA(DIALOG_W) + PX_WA(DIALOG_W) - (PX_WA((8*SIZE_M))*5) - PX_WA(5);
         };
     };
 };
