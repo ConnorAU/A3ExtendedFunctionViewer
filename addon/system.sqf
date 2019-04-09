@@ -872,7 +872,7 @@ switch _mode do {
 			"Function Arguments",
 			compile ("
 				if _confirmed then {
-					['executeArgumentProvided',[_text,'"+(_data#0)+"']] call "+QUOTE(THIS_FUNC)+";
+					['executeArgumentProvided',[_text,'"+(_data#0)+"','"+(_data#1)+"']] call "+QUOTE(THIS_FUNC)+";
 				};
 			"),
 			"Execute","",
@@ -880,7 +880,7 @@ switch _mode do {
 		] call CAU_UserInputMenus_fnc_text;
 	};
 	case "executeArgumentProvided":{
-		_params params ["_text","_func"];
+		_params params ["_text","_func","_file"];
 
 		USE_DISPLAY(THIS_DISPLAY);
 		USE_CTRL(_ctrlButtonExecute,IDC_BUTTON_EXECUTE);
@@ -889,14 +889,22 @@ switch _mode do {
 		_ctrlButtonExecute ctrlSetText "Executing...";
 
 		// spawn to ensure no errors occur from unscheduled execution
-		[_ctrlButtonExecute,_text,_func] spawn {
-			params ["_ctrlButtonExecute","_text","_func"];
+		[_ctrlButtonExecute,_text,_func,_file] spawn {
+			params ["_ctrlButtonExecute","_text","_func","_file"];
 
-			private _arguments = call compile _text;
-			private _code = missionNameSpace getVariable [_func,{}];
+			// Can't call _code with a nil argument, `nil call {}` doesn't execute and `call {}` inherits the upper scope's _this variable so nil arguments must default to a value (an array in this case)
+			private _arguments = [call compile _text] param [0,[]];
+			private _code = missionNameSpace getVariable [_func,0];
+			if !(_code isEqualType {}) then {
+				// do it in an if statement so we arent preprocessing a file if it has already loaded into a function
+				_code = compile preprocessFileLineNumbers _file;
+			};
 
 			private _tick = diag_tickTime;
-			private _return = if (isNil "_arguments") then {call _code} else {_arguments call _code};
+			private _return = [_arguments,_code] call {
+				private ["_ctrlButtonExecute","_text","_func","_file","_arguments","_code","_tick"];
+				(_this#0) call (_this#1);
+			};
 			private _duration = (diag_tickTime - _tick) * 1000;
 
 			_ctrlButtonExecute ctrlEnable true;
