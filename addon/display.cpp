@@ -78,21 +78,25 @@ class CAU_displayExtendedFunctionViewer {
             w=pixelW;
             h=PX_HA(SIZE_M);
         };
-        class highlightButton: ctrlButtonPicture {
-            idc=IDC_BUTTON_HIGHLIGHT;
+        class sizeUpButton: ctrlButtonPicture {
+            idc=IDC_BUTTON_SIZEUP;
             colorBackground[]={0,0,0,0};
             x=CENTER_XA(DIALOG_W) + PX_WA(2) + PX_WA((1/5*DIALOG_W)) + PX_WA(4) + 2*(PX_WA((10*SIZE_M))) + PX_WA(2);
             y=CENTER_YA(DIALOG_H) + PX_HA(SIZE_M) + PX_HA(1);
             w=PX_WA(SIZE_M);
             h=PX_HA(SIZE_M);
         };
-        class sizeDownButton: highlightButton {
+        class sizeDownButton: sizeUpButton {
             idc=IDC_BUTTON_SIZEDOWN;
             x=CENTER_XA(DIALOG_W) + PX_WA(2) + PX_WA((1/5*DIALOG_W)) + PX_WA(4) + 2*(PX_WA((10*SIZE_M))) + PX_WA(3) + PX_WA(SIZE_M);
         };
-        class sizeUpButton: highlightButton {
-            idc=IDC_BUTTON_SIZEUP;
+        class highlightButton: sizeUpButton {
+            idc=IDC_BUTTON_HIGHLIGHT;
             x=CENTER_XA(DIALOG_W) + PX_WA(2) + PX_WA((1/5*DIALOG_W)) + PX_WA(4) + 2*(PX_WA((10*SIZE_M))) + PX_WA(4) + 2*(PX_WA(SIZE_M));
+        };
+        class lineInterpretButton: sizeUpButton {
+            idc=IDC_BUTTON_LINE_INTERPRET;
+            x=CENTER_XA(DIALOG_W) + PX_WA(2) + PX_WA((1/5*DIALOG_W)) + PX_WA(4) + 2*(PX_WA((10*SIZE_M))) + PX_WA(5) + 3*(PX_WA(SIZE_M));
         };
 
         class treeCombo: ctrlCombo {

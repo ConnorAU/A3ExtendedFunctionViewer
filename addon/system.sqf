@@ -16,6 +16,7 @@
 #define VAR_THEME QUOTE(FUNC_SUBVAR(setting_theme))
 #define VAR_LOAD QUOTE(FUNC_SUBVAR(setting_load))
 #define VAR_HIGHLIGHT QUOTE(FUNC_SUBVAR(setting_highlight))
+#define VAR_LINE_INTERPRET QUOTE(FUNC_SUBVAR(setting_line_interpret))
 #define VAR_FONT_SIZE QUOTE(FUNC_SUBVAR(setting_font_size))
 #define VAR_TREE_MODE QUOTE(FUNC_SUBVAR(setting_tree_mode))
 
@@ -47,7 +48,8 @@
 
 #define VAL_SYNTAX_ON  "\cau\extendedfunctionviewer\a_highlight.paa"
 #define VAL_SYNTAX_OFF "\cau\extendedfunctionviewer\a_plain.paa"
-
+#define VAL_LINE_INTERPRET_ON  "\cau\extendedfunctionviewer\hash_highlight.paa"
+#define VAL_LINE_INTERPRET_OFF "\cau\extendedfunctionviewer\hash_plain.paa"
 
 params[["_mode","",[""]],["_params",[]]];
 
@@ -60,9 +62,10 @@ switch _mode do {
 		USE_CTRL(_ctrlButtonSearch,IDC_BUTTON_SEARCH);
 		USE_CTRL(_ctrlComboTheme,IDC_COMBO_THEME);
 		USE_CTRL(_ctrlComboLoad,IDC_COMBO_LOAD);
-		USE_CTRL(_ctrlButtonHighlight,IDC_BUTTON_HIGHLIGHT);
-		USE_CTRL(_ctrlButtonSizeDown,IDC_BUTTON_SIZEDOWN);
 		USE_CTRL(_ctrlButtonSizeUp,IDC_BUTTON_SIZEUP);
+		USE_CTRL(_ctrlButtonSizeDown,IDC_BUTTON_SIZEDOWN);
+		USE_CTRL(_ctrlButtonHighlight,IDC_BUTTON_HIGHLIGHT);
+		USE_CTRL(_ctrlButtonLineInterpret,IDC_BUTTON_LINE_INTERPRET);
 		USE_CTRL(_ctrlComboTree,IDC_COMBO_TREE_MODE);
 		USE_CTRL(_ctrlButtonCollapse,IDC_BUTTON_TREE_COLLAPSE);
 		USE_CTRL(_ctrlButtonExpand,IDC_BUTTON_TREE_EXPAND);
@@ -97,24 +100,28 @@ switch _mode do {
 		{_ctrlComboLoad lbAdd _x} forEach [
 			"loadFile",
 			"preprocessFile",
-			"preprocessFileLineNumbers"
+			"preprocessFileLineNumbers",
+			"Compiled Function"
 		];
 		_ctrlComboLoad ctrlSetTooltip "Function viewer file loading method";
 		_ctrlComboLoad ctrlAddEventHandler ["LBSelChanged",{["loadLBSelChanged",_this] call THIS_FUNC}];
 		_ctrlComboLoad lbSetCurSel (profileNamespace getVariable [VAR_LOAD,0]);
 
-		_ctrlButtonHighlight ctrlSetText ([VAL_SYNTAX_OFF,VAL_SYNTAX_ON] select (profilenamespace getVariable [VAR_HIGHLIGHT,true]));
-		_ctrlButtonHighlight ctrlSetTooltip "Toggle Syntax Highlighting";
-		_ctrlButtonHighlight ctrlAddEventHandler ["ButtonClick",{["highlightButtonClick",_this] call THIS_FUNC}];
-
+		_ctrlButtonSizeUp ctrlSetText "\cau\extendedfunctionviewer\a_up.paa";
+		_ctrlButtonSizeUp ctrlSetTooltip "Increase font size";
+		_ctrlButtonSizeUp ctrlAddEventHandler ["ButtonClick",{["sizeButtonClick",_this] call THIS_FUNC}];
 
 		_ctrlButtonSizeDown ctrlSetText "\cau\extendedfunctionviewer\a_down.paa";
 		_ctrlButtonSizeDown ctrlSetTooltip "Decrease font size";
 		_ctrlButtonSizeDown ctrlAddEventHandler ["ButtonClick",{["sizeButtonClick",_this] call THIS_FUNC}];
 
-		_ctrlButtonSizeUp ctrlSetText "\cau\extendedfunctionviewer\a_up.paa";
-		_ctrlButtonSizeUp ctrlSetTooltip "Increase font size";
-		_ctrlButtonSizeUp ctrlAddEventHandler ["ButtonClick",{["sizeButtonClick",_this] call THIS_FUNC}];
+		_ctrlButtonHighlight ctrlSetText ([VAL_SYNTAX_OFF,VAL_SYNTAX_ON] select (profilenamespace getVariable [VAR_HIGHLIGHT,true]));
+		_ctrlButtonHighlight ctrlSetTooltip "Toggle Syntax Highlighting";
+		_ctrlButtonHighlight ctrlAddEventHandler ["ButtonClick",{["highlightButtonClick",_this] call THIS_FUNC}];
+
+		_ctrlButtonLineInterpret ctrlSetText ([VAL_LINE_INTERPRET_OFF,VAL_LINE_INTERPRET_ON] select (profilenamespace getVariable [VAR_LINE_INTERPRET,false]));
+		_ctrlButtonLineInterpret ctrlSetTooltip "Toggle #line interpeting (preprocessFileLineNumbers and Compiled Function modes only)";
+		_ctrlButtonLineInterpret ctrlAddEventHandler ["ButtonClick",{["lineInterpretButtonClick",_this] call THIS_FUNC}];
 
 		{_ctrlComboTree lbAdd _x} forEach [
 			"CfgFunctions Hierarchy",
@@ -455,6 +462,7 @@ switch _mode do {
 			[VAR_THEME,0],
 			[VAR_LOAD,0],
 			[VAR_HIGHLIGHT,true],
+			[VAR_LINE_INTERPRET,false],
 			[VAR_TREE_MODE,0]
 		]
 	};
@@ -475,15 +483,6 @@ switch _mode do {
 			case "treeLBSelChanged":{["populateTree"] call THIS_FUNC};
 		};
 	};
-	case "highlightButtonClick":{
-		_params params ["_ctrl"];
-
-		private _state = !(profilenamespace getVariable [VAR_HIGHLIGHT,true]);
-		_ctrl ctrlSetText ([VAL_SYNTAX_OFF,VAL_SYNTAX_ON] select _state);
-		profilenamespace setVariable [VAR_HIGHLIGHT,_state];
-
-		["loadFunction"] call THIS_FUNC;
-	};
 	case "sizeButtonClick":{
 		_params params ["_ctrl"];
 
@@ -497,7 +496,24 @@ switch _mode do {
 
 		profileNamespace setVariable [VAR_FONT_SIZE,_size];
 
-		["clearSavedFuncs"] call THIS_FUNC;
+		["loadFunction"] call THIS_FUNC;
+	};
+	case "highlightButtonClick":{
+		_params params ["_ctrl"];
+
+		private _state = !(profilenamespace getVariable [VAR_HIGHLIGHT,true]);
+		_ctrl ctrlSetText ([VAL_SYNTAX_OFF,VAL_SYNTAX_ON] select _state);
+		profilenamespace setVariable [VAR_HIGHLIGHT,_state];
+
+		["loadFunction"] call THIS_FUNC;
+	};
+	case "lineInterpretButtonClick":{
+		_params params ["_ctrl"];
+
+		private _state = !(profilenamespace getVariable [VAR_LINE_INTERPRET,false]);
+		_ctrl ctrlSetText ([VAL_LINE_INTERPRET_OFF,VAL_LINE_INTERPRET_ON] select _state);
+		profilenamespace setVariable [VAR_LINE_INTERPRET,_state];
+
 		["loadFunction"] call THIS_FUNC;
 	};
 
@@ -538,8 +554,6 @@ switch _mode do {
 	case "loadFunction":{
 		USE_DISPLAY(THIS_DISPLAY);		
 		USE_CTRL(_ctrlComboLoad,IDC_COMBO_LOAD);
-		USE_CTRL(_ctrlButtonHighlight,IDC_BUTTON_HIGHLIGHT);
-		USE_CTRL(_ctrlTree,IDC_TREE_VIEW);
 		USE_CTRL(_ctrlViewerLoadbar,IDC_STATIC_VIEWER_LOADBAR);
 		USE_CTRL(_ctrlViewerFunc,IDC_STATIC_VIEWER_FUNC);
 		USE_CTRL(_ctrlViewerPath,IDC_STATIC_VIEWER_PATH);
@@ -555,9 +569,14 @@ switch _mode do {
 		terminate _thread;
 
 		_data params ["_func","_file"];
-		private _content = switch (lbCurSel _ctrlComboLoad) do {
+		private _fileLoadMode = lbCurSel _ctrlComboLoad;
+		private _content = switch _fileLoadMode do {
 			case 1:{preprocessFile _file};
 			case 2:{preprocessFileLineNumbers _file};
+			case 3:{
+				private _var = str(missionNamespace getVariable [_func,{}]);
+				_var select [1,count _var - 2];
+			};
 			default {loadFile _file};
 		};
 
@@ -576,9 +595,56 @@ switch _mode do {
 		_text = ["stringReplace",[_text,"    ","&#32;&#32;&#32;&#32;"]] call THIS_FUNC;
 		_text = format["<t color='%1' size='%2'>",["themeColour",""] call THIS_FUNC,_fontSize]+_text+"</t>";
 
-		private _lineCount = [];
-		for "_i" from 1 to (["stringCount",[_text,"<br/>"]] call THIS_FUNC)+1 do {
-			_lineCount pushBack str _i;
+		private _lineInterpretState = profilenamespace getVariable [VAR_LINE_INTERPRET,false];
+		private _lineInterpretStateInt = [0,1] select _lineInterpretState;
+
+		private _savedVar = VAL_SAVED_FUNC_VAR(_func);
+		private _savedFunc = _ctrlViewerContent getVariable [_savedVar,[]];
+
+		private _savedLineCounts = _savedFunc param [0,[]];
+		private _loadModes = _savedLineCounts param [_fileLoadMode,[]];
+		private _lineCount = _loadModes param [_lineInterpretStateInt,[]];
+		
+		if (_lineCount isEqualTo []) then {
+			if (_lineInterpretState && (_fileLoadMode in [2,3])) then {
+				/*
+					There are a few things to explain here:
+					1. It splits the script string by line so each line is its own string snippet
+					2. It splits each line snippet with a space delimeter to seperate the line number value into its own string
+					3. It searches for #line at the end of each snippet because sometimes '#line N "script\path"' is appended to the end of a line with existing script commands
+					4. It ensures the snippet after #line is a number, otherwise it is most likely #line written into a string, like this mod does a few lines down
+				*/
+				private _displayI = 1;
+				private _textTMP = ["stringSplitString",[_text,"<br/>"]] call THIS_FUNC;
+				for "_i" from 0 to count _textTMP - 1 do {
+					private _line = _textTMP#_i;
+					if ("#line " in _line) then {
+						private _lineSplit = _line splitString " ";
+						private _lineNumber = parseNumber(_lineSplit#((_lineSplit findIf {["stringEndsWith",[_x,"#line"]] call THIS_FUNC})+1));
+						if (_lineNumber > 0) then {
+							_displayI = (_lineNumber - 1) max 0;
+							_lineCount pushBack "─";
+						} else {
+							_lineCount pushBack str _displayI;
+						};
+					} else {
+						_lineCount pushBack str _displayI;
+					};
+					_displayI = _displayI + 1;
+				};
+			} else {
+				for "_i" from 1 to (["stringCount",[_text,"<br/>"]] call THIS_FUNC)+1 do {
+					_lineCount pushBack str _i;
+				};
+			};
+			private _savedFuncs = _ctrlViewerContent getVariable [VAR_SAVED_FUNCS,[]];
+			_savedFuncs pushBackUnique _savedVar;
+			_ctrlViewerContent setVariable [VAR_SAVED_FUNCS,_savedFuncs];
+
+			_loadModes set [_lineInterpretStateInt,_lineCount];
+			_savedLineCounts set [_fileLoadMode,_loadModes];
+			_savedFunc set [0,_savedLineCounts];
+			_ctrlViewerContent setVariable [_savedVar,_savedFunc];
 		};
 		_lineCount = format["<t color='%1' size='%2'>",["themeColour","lineNumber"] call THIS_FUNC,_fontSize]+(_lineCount joinString "<br/>")+"</t>";
 
@@ -628,190 +694,191 @@ switch _mode do {
 		private _theme = profileNamespace getVariable [VAR_THEME,0];
 		private _mode = lbCurSel _ctrlComboLoad;
 
-		if ((_savedFunc param [_theme,[]] param [_mode,""]) != "") exitWith {
-			_ctrlViewerContent ctrlSetStructuredText parseText (_savedFunc#_theme#_mode);
-		};
-
-		private _textArray = _text splitString "";
-		private _output = [];
-		private _segment = "";
-
-		private _letters = VAL_LETTERS;
-		private _varChars = VAL_VAR_CHARS;
-		private _digitChars = VAL_DIGIT_CHARS;
-		private _spaceTab = [tostring[32],tostring[9]];
-		private _supportedOperators = _display getVariable ["supportedOperators",[]];
-		private _supportedCommands = _display getVariable ["supportedCommands",[]];
-
-		private _push = {
-			if (_segment != "") then {
-				_output pushBack _segment;
-				_segment = "";
-			};
-		};
+		private _savedContents = _savedFunc param [1,[]];
+		private _themeFunc = _savedContents param [_theme,[]];
+		private _output = _themeFunc param [_mode,""];
 
 		private _ctrlViewerLoadbarP = ctrlPosition _ctrlViewerLoadbar;
 		private _ctrlViewerLoadbarW = _ctrlViewerLoadbar getVariable ["width",0];
 
-		private _textLen = count _text;
+		if (_output == "") then {
+			_output = [];
+			private _textArray = _text splitString "";
+			private _segment = "";
 
-		for "_i" from 0 to (_textLen - 1) do {
-			if (isNull _ctrlViewerLoadbar) then {terminate _thisScript};
-			_ctrlViewerLoadbarP set [2,linearConversion[0,_textLen,_i,0,0.75*_ctrlViewerLoadbarW,true]];
-			_ctrlViewerLoadbar ctrlSetPosition _ctrlViewerLoadbarP;
-			_ctrlViewerLoadbar ctrlCommit 0;
+			private _letters = VAL_LETTERS;
+			private _varChars = VAL_VAR_CHARS;
+			private _digitChars = VAL_DIGIT_CHARS;
+			private _spaceTab = [tostring[32],tostring[9]];
+			private _supportedOperators = _display getVariable ["supportedOperators",[]];
+			private _supportedCommands = _display getVariable ["supportedCommands",[]];
 
-			private _thisChar = _textArray param [_i,""];
-			private _prevChar = _textArray param [_i - 1,""];
-			private _nextChar = _textArray param [_i + 1,""];
+			private _push = {
+				if (_segment != "") then {
+					_output pushBack _segment;
+					_segment = "";
+				};
+			};
 
-			switch true do {
-				case (_thisChar == "/" && _nextChar == "*"):{
-					call _push;
-					_segment = _text select [_i,_textLen];			
-					_index = 4 + ((_segment select [2,count _segment]) find ("*/"));
-					if (_index == -1) then {_index = count _segment};
-					_segment = _segment select [0,_index];	
-					call _push;
-					_i = _i + _index - 1;
-				};
-				case (_thisChar == "/" && _nextChar == "/"):{
-					call _push;
-					_segment = _text select [_i,_textLen];
-					_index = (_segment select [0,count _segment]) find tostring[10];
-					if (_index == -1) then {_index = count _segment};
-					_segment = _segment select [0,_index];	
-					call _push;
-					_i = _i + _index - 1;
-				};
-				case (_thisChar in VAL_QUOTES):{
-					call _push;
-					_segment = _text select [_i,_textLen];
-					_index = 2 + ((_segment select [1,count _segment]) find _thisChar);
-					if (_index == -1) then {_index = count _segment};
-					_segment = _segment select [0,_index];	
-					call _push;
-					_i = _i + _index - 1;
-				};
-				case (_thisChar in _digitChars):{
-					call _push;
-					private _tmp_segment = _textArray select [_i,_textLen];
-					_tmp_segment = _tmp_segment select [0,count _tmp_segment];
-					_index = _tmp_segment findIf {!(_x in _digitChars)};
-					if (_index == -1) then {_index = count _tmp_segment};
-					_segment = (_text select [_i,_textLen]) select [0,_index];	
-					call _push;
-					_i = _i + _index - 1;
-				};
-				case (_thisChar in _varChars):{
-					call _push;
-					private _tmp_segment = _textArray select [_i,_textLen];
-					_tmp_segment = _tmp_segment select [0,count _tmp_segment];
-					_index = _tmp_segment findIf {!(_x in _varChars)};
-					if (_index == -1) then {_index = count _tmp_segment};
-					_segment = (_text select [_i,_textLen]) select [0,_index];	
-					call _push;
-					_i = _i + _index - 1;
-				};
-				case (_thisChar in VAL_BRACKETS);
-				case (_thisChar == ",");
-				case (_thisChar == tostring[10]):{
-					call _push;
-					_segment = _thisChar;
-					call _push;
-				};
-				default {
-					if (
-						(_thisChar in _spaceTab && !(_prevChar in _spaceTab)) ||
-						{_prevChar in _spaceTab && !(_thisChar in _spaceTab)}
-					) then {
+			private _textLen = count _text;
+
+			for "_i" from 0 to (_textLen - 1) do {
+				if (isNull _ctrlViewerLoadbar) then {terminate _thisScript};
+				_ctrlViewerLoadbarP set [2,linearConversion[0,_textLen,_i,0,0.75*_ctrlViewerLoadbarW,true]];
+				_ctrlViewerLoadbar ctrlSetPosition _ctrlViewerLoadbarP;
+				_ctrlViewerLoadbar ctrlCommit 0;
+
+				private _thisChar = _textArray param [_i,""];
+				private _prevChar = _textArray param [_i - 1,""];
+				private _nextChar = _textArray param [_i + 1,""];
+
+				switch true do {
+					case (_thisChar == "/" && _nextChar == "*"):{
+						call _push;
+						_segment = _text select [_i,_textLen];			
+						_index = 4 + ((_segment select [2,count _segment]) find ("*/"));
+						if (_index == -1) then {_index = count _segment};
+						_segment = _segment select [0,_index];	
+						call _push;
+						_i = _i + _index - 1;
+					};
+					case (_thisChar == "/" && _nextChar == "/"):{
+						call _push;
+						_segment = _text select [_i,_textLen];
+						_index = (_segment select [0,count _segment]) find tostring[10];
+						if (_index == -1) then {_index = count _segment};
+						_segment = _segment select [0,_index];	
+						call _push;
+						_i = _i + _index - 1;
+					};
+					case (_thisChar in VAL_QUOTES):{
+						call _push;
+						_segment = _text select [_i,_textLen];
+						_index = 2 + ((_segment select [1,count _segment]) find _thisChar);
+						if (_index == -1) then {_index = count _segment};
+						_segment = _segment select [0,_index];	
+						call _push;
+						_i = _i + _index - 1;
+					};
+					case (_thisChar in _digitChars):{
+						call _push;
+						private _tmp_segment = _textArray select [_i,_textLen];
+						_tmp_segment = _tmp_segment select [0,count _tmp_segment];
+						_index = _tmp_segment findIf {!(_x in _digitChars)};
+						if (_index == -1) then {_index = count _tmp_segment};
+						_segment = (_text select [_i,_textLen]) select [0,_index];	
+						call _push;
+						_i = _i + _index - 1;
+					};
+					case (_thisChar in _varChars):{
+						call _push;
+						private _tmp_segment = _textArray select [_i,_textLen];
+						_tmp_segment = _tmp_segment select [0,count _tmp_segment];
+						_index = _tmp_segment findIf {!(_x in _varChars)};
+						if (_index == -1) then {_index = count _tmp_segment};
+						_segment = (_text select [_i,_textLen]) select [0,_index];	
+						call _push;
+						_i = _i + _index - 1;
+					};
+					case (_thisChar in VAL_BRACKETS);
+					case (_thisChar == ",");
+					case (_thisChar == tostring[10]):{
+						call _push;
+						_segment = _thisChar;
 						call _push;
 					};
-					_segment = _segment + _thisChar;
+					default {
+						if (
+							(_thisChar in _spaceTab && !(_prevChar in _spaceTab)) ||
+							{_prevChar in _spaceTab && !(_thisChar in _spaceTab)}
+						) then {
+							call _push;
+						};
+						_segment = _segment + _thisChar;
+					};
 				};
 			};
+
+			call _push;
+
+			private _outputLen = count _output - 1;
+			{
+				if (isNull _ctrlViewerLoadbar) then {terminate _thisScript};
+				_ctrlViewerLoadbarP set [2,linearConversion[0,_outputLen,_forEachIndex,0.75*_ctrlViewerLoadbarW,0.99*_ctrlViewerLoadbarW,true]];
+				_ctrlViewerLoadbar ctrlSetPosition _ctrlViewerLoadbarP;
+				_ctrlViewerLoadbar ctrlCommit 0;
+
+				private _type = switch true do {
+					case ((_x select [0,2]) in ["/*","//"]):{"comment"};
+					case ((_x select [0,1]) in ["'",""""]):{"string"};
+					case ((_x select [0,1]) in _digitChars && {((_x splitstring "") - _digitChars) isEqualTo []}):{"number"};
+					case (tolower _x in VAL_MAGIC_VARS):{"magicVar"};
+					case ((_x select [0,1]) in ["_"] && {((_x splitstring "") - _varChars) isEqualTo []}):{"localVar"};
+					case ((["_fnc_",_x select [1,count _x - 2]] call BIS_fnc_inString) && {((_x splitstring "") - _varChars) isEqualTo []}):{"function"};
+					//case (_x in VAL_BRACKETS):{"bracket"};
+					//case (_x in _supportedOperators):{"operator"};
+					case (tolower _x in VAL_PREPROCESSOR):{"preprocessor"};
+					case (tolower _x in VAL_KEYWORDS):{"keyword"};
+					case (tolower _x in VAL_LITTERALS):{"litteral"};
+					case (tolower _x in VAL_NULLS):{"null"};
+					case (tolower _x in _supportedCommands):{"command"};
+					case (((_x splitstring "") - _varChars) isEqualTo []):{"globalVar"};
+					default {""};
+				};
+				_x = ["replaceStructuredCharacters",_x] call THIS_FUNC;
+				_output set [_forEachIndex,
+					if (_type == "") then {_x} else {
+						"<t color='"+(["themeColour",_type] call THIS_FUNC)+"'>"+_x+"</t>"
+					}
+				];
+			} foreach _output;
+
+			_output = ["stringReplace",[_output joinstring "",tostring[13],""]] call THIS_FUNC;
+			// blank lines dont maintain original line height on modified sizes
+			_output = ["stringReplace",[_output,toString[10],"─<br/>"]] call THIS_FUNC;
+			_output = ["stringReplace",[_output,toString[9],"&#32;&#32;&#32;&#32;"]] call THIS_FUNC;
+
+			private _savedFuncs = _ctrlViewerContent getVariable [VAR_SAVED_FUNCS,[]];
+			_savedFuncs pushBackUnique _savedVar;
+			_ctrlViewerContent setVariable [VAR_SAVED_FUNCS,_savedFuncs];
+
+			_themeFunc set [_mode,_output];
+			_savedContents set [_theme,_themeFunc];
+			_savedFunc set [1,_savedContents];
+			_ctrlViewerContent setVariable [_savedVar,_savedFunc];
 		};
 
-		call _push;
-
-		private _outputLen = count _output - 1;
-		{
-			if (isNull _ctrlViewerLoadbar) then {terminate _thisScript};
-			_ctrlViewerLoadbarP set [2,linearConversion[0,_outputLen,_forEachIndex,0.75*_ctrlViewerLoadbarW,0.99*_ctrlViewerLoadbarW,true]];
-			_ctrlViewerLoadbar ctrlSetPosition _ctrlViewerLoadbarP;
-			_ctrlViewerLoadbar ctrlCommit 0;
-
-			private _type = switch true do {
-				case ((_x select [0,2]) in ["/*","//"]):{"comment"};
-				case ((_x select [0,1]) in ["'",""""]):{"string"};
-				case ((_x select [0,1]) in _digitChars && {((_x splitstring "") - _digitChars) isEqualTo []}):{"number"};
-				case (tolower _x in VAL_MAGIC_VARS):{"magicVar"};
-				case ((_x select [0,1]) in ["_"] && {((_x splitstring "") - _varChars) isEqualTo []}):{"localVar"};
-				case ((["_fnc_",_x select [1,count _x - 2]] call BIS_fnc_inString) && {((_x splitstring "") - _varChars) isEqualTo []}):{"function"};
-				//case (_x in VAL_BRACKETS):{"bracket"};
-				//case (_x in _supportedOperators):{"operator"};
-				case (tolower _x in VAL_PREPROCESSOR):{"preprocessor"};
-				case (tolower _x in VAL_KEYWORDS):{"keyword"};
-				case (tolower _x in VAL_LITTERALS):{"litteral"};
-				case (tolower _x in VAL_NULLS):{"null"};
-				case (tolower _x in _supportedCommands):{"command"};
-				case (((_x splitstring "") - _varChars) isEqualTo []):{"globalVar"};
-				default {""};
-			};
-			_x = ["replaceStructuredCharacters",_x] call THIS_FUNC;
-			_output set [_forEachIndex,
-				if (_type == "") then {_x} else {
-					"<t color='"+(["themeColour",_type] call THIS_FUNC)+"'>"+_x+"</t>"
-				}
-			];
-		} foreach _output;
-
-		_output = [format["<t color='%1' size='%2'>",["themeColour",""] call THIS_FUNC,profileNamespace getVariable [VAR_FONT_SIZE,1]]] + _output + ["</t>"];
-		_output = ["stringReplace",[_output joinstring "",tostring[13],""]] call THIS_FUNC;
-		// blank lines dont maintain original line height on modified sizes
-		_output = ["stringReplace",[_output,toString[10],"─<br/>"]] call THIS_FUNC;
-		_output = ["stringReplace",[_output,toString[9],"&#32;&#32;&#32;&#32;"]] call THIS_FUNC;
-
-		_ctrlViewerContent ctrlSetStructuredText parseText _output;
+		_ctrlViewerContent ctrlSetStructuredText parseText (format["<t color='%1' size='%2'>",["themeColour",""] call THIS_FUNC,profileNamespace getVariable [VAR_FONT_SIZE,1]] + _output + "</t>");
 
 		_ctrlViewerLoadbarP set [2,_ctrlViewerLoadbarW];
 		_ctrlViewerLoadbar ctrlSetPosition _ctrlViewerLoadbarP;
 		_ctrlViewerLoadbar ctrlCommit 0;
-
-		private _savedFuncs = _ctrlViewerContent getVariable [VAR_SAVED_FUNCS,[]];
-		_savedFuncs pushBackUnique _savedVar;
-		_ctrlViewerContent setVariable [VAR_SAVED_FUNCS,_savedFuncs];
-
-		private _themeFunc = _savedFunc param [_theme,[]];
-		_themeFunc set [_mode,_output];
-		_savedFunc set [_theme,_themeFunc];
-		_ctrlViewerContent setVariable [_savedVar,_savedFunc];
 	};
 	case "themeColour":{
 		private _theme = profileNamespace getVariable [VAR_THEME,0];
-		switch _params do {//         dark+     light+    one dark  one light
-			case "background":		{["#1e1e1e","#ffffff","#282c34","#fafafa"]#_theme};
-			case "func":			{["#e9e9e9","#0e0e0e","#eaeaeb","#333333"]#_theme};
-			case "path":			{["#959595","#424242","#949597","#4B4B4B"]#_theme};
-			case "lineNumber":		{["#858585","#227893","#495162","#5C5C5C"]#_theme};
+		(switch _params do {//         dark+     light+    one dark  one light
+			case "background":		{["#1e1e1e","#ffffff","#282c34","#fafafa"]};
+			case "func":			{["#e9e9e9","#0e0e0e","#eaeaeb","#333333"]};
+			case "path":			{["#959595","#424242","#949597","#4B4B4B"]};
+			case "lineNumber":		{["#858585","#227893","#495162","#5C5C5C"]};
 
-			case "comment":			{["#608932","#098000","#7f848f","#a0a1a7"]#_theme};
-			case "string":			{["#ce9178","#a31514","#7dc361","#50a150"]#_theme};
-			case "number":			{["#a9cd88","#09885a","#d19a66","#986801"]#_theme};
-			case "magicVar":		{["#569cd6","#033cff","#e5c07b","#e4564a"]#_theme};
-			case "localVar":		{["#9cdcfe","#001980","#e06c75","#e4564a"]#_theme};
-			case "function":		{["#e8e8e7","#795e26","#56b6c2","#0084bc"]#_theme};
-			//case "bracket":		{[]#_theme};
-			//case "operator":		{[]#_theme};
-			case "preprocessor":	{["#9cdcfe","#001980","#e06c75","#e4564a"]#_theme};
-			case "keyword":			{["#c586c0","#af2adb","#c678de","#a626a4"]#_theme};
-			case "litteral":		{["#569cd6","#033cff","#e5c07b","#e4564a"]#_theme};
-			case "null":			{["#569cd6","#795e26","#d19a66","#986801"]#_theme};
-			case "command":			{["#dcdcaa","#795e26","#61afef","#4178f2"]#_theme};
-			case "globalVar":		{["#e8e8e7","#001980","#56b6c2","#0084bc"]#_theme};
+			case "comment":			{["#608932","#098000","#7f848f","#a0a1a7"]};
+			case "string":			{["#ce9178","#a31514","#7dc361","#50a150"]};
+			case "number":			{["#a9cd88","#09885a","#d19a66","#986801"]};
+			case "magicVar":		{["#569cd6","#033cff","#e5c07b","#e4564a"]};
+			case "localVar":		{["#9cdcfe","#001980","#e06c75","#e4564a"]};
+			case "function":		{["#e8e8e7","#795e26","#56b6c2","#0084bc"]};
+			//case "bracket":		{[]};
+			//case "operator":		{[]};
+			case "preprocessor":	{["#9cdcfe","#001980","#e06c75","#e4564a"]};
+			case "keyword":			{["#c586c0","#af2adb","#c678de","#a626a4"]};
+			case "litteral":		{["#569cd6","#033cff","#e5c07b","#e4564a"]};
+			case "null":			{["#569cd6","#795e26","#d19a66","#986801"]};
+			case "command":			{["#dcdcaa","#795e26","#61afef","#4178f2"]};
+			case "globalVar":		{["#e8e8e7","#001980","#56b6c2","#0084bc"]};
 
-			default 				{["#d4d4d4","#000000","#bbbbbb","#333333"]#_theme};
-		};
+			default 				{["#d4d4d4","#000000","#bbbbbb","#333333"]};
+		})#_theme;
 	};
 
 
@@ -843,10 +910,14 @@ switch _mode do {
 		private _data = profileNamespace getVariable [VAR_SELECTED_FUNC,[]];
 		if (_data isEqualTo []) exitWith {};
 
-		private _file = _data # 1;
+		_data params ["_func","_file"];
 		private _content = switch (lbCurSel _ctrlComboLoad) do {
 			case 1:{preprocessFile _file};
 			case 2:{preprocessFileLineNumbers _file};
+			case 3:{
+				private _var = str(missionNamespace getVariable [_func,{}]);
+				_var select [1,count _var - 2];
+			};
 			default {loadFile _file};
 		};
 
@@ -934,6 +1005,20 @@ switch _mode do {
 			_input = _input select [_index + _findLen,count _input];
 		};
 		_output joinString ""
+	};
+	case "stringSplitString":{
+		_params params ["_input","_find"];
+		private _findLen = count _find;
+		_find = toLower _find;
+		private _output = [];
+		private _index = -1;
+		for "_i" from 0 to 1 step 0 do {
+			_index = tolower _input find _find;
+			if (_index < 0) exitwith {_output pushback _input;};
+			_output pushback (_input select [0,_index]);
+			_input = _input select [_index + _findLen,count _input];
+		};
+		_output
 	};
 	case "stringStartsWith":{
 		_params params ["_string","_search"];
