@@ -939,7 +939,7 @@ switch _mode do {
 		};
 
 		[
-			false,
+			[false,""],
 			"Function Arguments",
 			compile ("
 				if _confirmed then {
