@@ -40,11 +40,11 @@
 #define VAL_VAR_CHARS ["_"] + VAL_LETTERS + VAL_DIGITS
 #define VAL_DIGIT_CHARS ["."] + VAL_DIGITS
 
-#define VAL_PREPROCESSOR ["include","define","ifdef","ifndef",/*"else",*/"endif","line"]
+#define VAL_PREPROCESSOR ["include","define","undef","ifdef","ifndef","else","endif","line"]
 #define VAL_KEYWORDS ["case","catch","default","do","else","exit","exitwith","for","foreach","from","if","private","switch","then","throw","to","try","waituntil","while","with"]
-#define VAL_LITTERALS ["blufor","civilian","confignull","controlnull","displaynull","east","endl","false","grpnull","independent","linebreak","locationnull","nil","objnull","opfor","pi","resistance","scriptnull","sideambientlife","sideempty","sidelogic","sideunknown","tasknull","teammembernull","true","west"]
+#define VAL_LITTERALS ["blufor","civilian","confignull","controlnull","displaynull","diaryrecordnull","east","endl","false","grpnull","independent","linebreak","locationnull","nil","objnull","opfor","pi","resistance","scriptnull","sideambientlife","sideempty","sidelogic","sideunknown","tasknull","teammembernull","true","west"]
 #define VAL_MAGIC_VARS ["_this","_x","_foreachindex","_exception","_thisscript","_thisfsm","_thiseventhandler"]
-#define VAL_NULLS ["nil","controlnull","displaynull","grpnull","locationnull","netobjnull","objnull","scriptnull","tasknull","teammembernull","confignull"]
+#define VAL_NULLS ["nil","controlnull","displaynull","diaryrecordnull","grpnull","locationnull","netobjnull","objnull","scriptnull","tasknull","teammembernull","confignull"]
 
 #define VAL_SYNTAX_ON  "\cau\extendedfunctionviewer\a_highlight.paa"
 #define VAL_SYNTAX_OFF "\cau\extendedfunctionviewer\a_plain.paa"
@@ -81,7 +81,7 @@ switch _mode do {
 
 		["initSettings"] call THIS_FUNC;
 
-		_ctrlTitle ctrlSetText "Extended Function Viewer"; 
+		_ctrlTitle ctrlSetText "Extended Function Viewer";
 
 		_ctrlEditSearch ctrlAddEventHandler ["KeyUp",{["searchKeyUp",_this] call THIS_FUNC}];
 		_ctrlButtonSearch ctrlAddEventHandler ["ButtonClick",{["searchButtonClick",_this] call THIS_FUNC}];
@@ -399,14 +399,14 @@ switch _mode do {
 			_data = parseSimpleArray _data;
 			profileNamespace setVariable [VAR_SELECTED_FUNC,_data];
 
-			// Add function to history if not already viewing history			
+			// Add function to history if not already viewing history
 			private _mode = profileNamespace getVariable [VAR_TREE_MODE,-1];
 			if (_mode != 3) then {
 				private _history = profileNamespace getVariable [VAR_SELECTED_FUNC_HISTORY,[]];
 				_history = ([_data] + (_history - [_data])) select [0,100]; // save last 100 viewed functions
 				profileNamespace setVariable [VAR_SELECTED_FUNC_HISTORY,_history];
 			};
-			
+
 			["loadFunction"] call THIS_FUNC;
 		};
 	};
@@ -543,7 +543,7 @@ switch _mode do {
 
 		private _colourFunc = ["themeColour","func"] call THIS_FUNC;
 		_ctrlViewerFunc ctrlSetTextColor (["htmlToRGBA1",_colourFunc] call THIS_FUNC);
-		
+
 		private _colourPath = ["themeColour","path"] call THIS_FUNC;
 		_ctrlViewerPath ctrlSetTextColor (["htmlToRGBA1",_colourPath] call THIS_FUNC);
 
@@ -552,7 +552,7 @@ switch _mode do {
 
 
 	case "loadFunction":{
-		USE_DISPLAY(THIS_DISPLAY);		
+		USE_DISPLAY(THIS_DISPLAY);
 		USE_CTRL(_ctrlComboLoad,IDC_COMBO_LOAD);
 		USE_CTRL(_ctrlViewerLoadbar,IDC_STATIC_VIEWER_LOADBAR);
 		USE_CTRL(_ctrlViewerFunc,IDC_STATIC_VIEWER_FUNC);
@@ -561,7 +561,7 @@ switch _mode do {
 		USE_CTRL(_ctrlViewerContent,IDC_STRUCTURED_VIEWER_CONTENT);
 
 		if !(_display getVariable [VAR_INIT_COMPLETE,false]) exitWith {};
-			
+
 		private _data = profileNamespace getVariable [VAR_SELECTED_FUNC,[]];
 		if (_data isEqualTo []) exitWith {};
 
@@ -604,7 +604,7 @@ switch _mode do {
 		private _savedLineCounts = _savedFunc param [0,[]];
 		private _loadModes = _savedLineCounts param [_fileLoadMode,[]];
 		private _lineCount = _loadModes param [_lineInterpretStateInt,[]];
-		
+
 		if (_lineCount isEqualTo []) then {
 			if (_lineInterpretState && (_fileLoadMode in [2,3])) then {
 				/*
@@ -684,7 +684,7 @@ switch _mode do {
 			_thread = ["highlightContent",[_func,_content,_display,_ctrlComboLoad,_ctrlViewerContent,_ctrlViewerLoadbar]] spawn THIS_FUNC;
 			_ctrlViewerLoadbar setVariable ["thread",_thread];
 		};
-	};		
+	};
 	case "highlightContent":{
 		_params params ["_func","_text","_display","_ctrlComboLoad","_ctrlViewerContent","_ctrlViewerLoadbar"];
 
@@ -735,19 +735,19 @@ switch _mode do {
 				switch true do {
 					case (_thisChar == "/" && _nextChar == "*"):{
 						call _push;
-						_segment = _text select [_i,_textLen];			
+						_segment = _text select [_i,_textLen];
 						_index = 4 + ((_segment select [2,count _segment]) find ("*/"));
 						if (_index == -1) then {_index = count _segment};
-						_segment = _segment select [0,_index];	
+						_segment = _segment select [0,_index];
 						call _push;
 						_i = _i + _index - 1;
 					};
 					case (_thisChar == "/" && _nextChar == "/"):{
 						call _push;
 						_segment = _text select [_i,_textLen];
-						_index = (_segment select [0,count _segment]) find tostring[10];
+						_index = _segment find tostring[10];
 						if (_index == -1) then {_index = count _segment};
-						_segment = _segment select [0,_index];	
+						_segment = _segment select [0,_index];
 						call _push;
 						_i = _i + _index - 1;
 					};
@@ -756,7 +756,7 @@ switch _mode do {
 						_segment = _text select [_i,_textLen];
 						_index = 2 + ((_segment select [1,count _segment]) find _thisChar);
 						if (_index == -1) then {_index = count _segment};
-						_segment = _segment select [0,_index];	
+						_segment = _segment select [0,_index];
 						call _push;
 						_i = _i + _index - 1;
 					};
@@ -766,7 +766,7 @@ switch _mode do {
 						_tmp_segment = _tmp_segment select [0,count _tmp_segment];
 						_index = _tmp_segment findIf {!(_x in _digitChars)};
 						if (_index == -1) then {_index = count _tmp_segment};
-						_segment = (_text select [_i,_textLen]) select [0,_index];	
+						_segment = (_text select [_i,_textLen]) select [0,_index];
 						call _push;
 						_i = _i + _index - 1;
 					};
@@ -776,13 +776,12 @@ switch _mode do {
 						_tmp_segment = _tmp_segment select [0,count _tmp_segment];
 						_index = _tmp_segment findIf {!(_x in _varChars)};
 						if (_index == -1) then {_index = count _tmp_segment};
-						_segment = (_text select [_i,_textLen]) select [0,_index];	
+						_segment = (_text select [_i,_textLen]) select [0,_index];
 						call _push;
 						_i = _i + _index - 1;
 					};
 					case (_thisChar in VAL_BRACKETS);
-					case (_thisChar == ",");
-					case (_thisChar == tostring[10]):{
+					case (_thisChar in [",","#",toString[10]]):{
 						call _push;
 						_segment = _thisChar;
 						call _push;
@@ -817,7 +816,7 @@ switch _mode do {
 					case ((["_fnc_",_x select [1,count _x - 2]] call BIS_fnc_inString) && {((_x splitstring "") - _varChars) isEqualTo []}):{"function"};
 					//case (_x in VAL_BRACKETS):{"bracket"};
 					//case (_x in _supportedOperators):{"operator"};
-					case (tolower _x in VAL_PREPROCESSOR):{"preprocessor"};
+					case (tolower _x in VAL_PREPROCESSOR && {(_output param [_forEachIndex - 1,""]) == "#"}):{"preprocessor"};
 					case (tolower _x in VAL_KEYWORDS):{"keyword"};
 					case (tolower _x in VAL_LITTERALS):{"litteral"};
 					case (tolower _x in VAL_NULLS):{"null"};
@@ -898,7 +897,7 @@ switch _mode do {
 	};
 	case "recompileAllButtonClick":{
 		1 call BIS_fnc_recompile;
-		
+
 		["clearSavedFuncs"] call THIS_FUNC;
 		["loadFunction"] call THIS_FUNC;
 	};
