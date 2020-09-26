@@ -1,11 +1,3 @@
-/*──────────────────────────────────────────────────────┐
-│   Author: Connor                                      │
-│   Steam:  https://steamcommunity.com/id/_connor       │
-│   Github: https://github.com/ConnorAU                 │
-│                                                       │
-│   Please do not modify or remove this comment block   │
-└──────────────────────────────────────────────────────*/
-
 class CAU_displayExtendedFunctionViewer {
 	idd=-1;
 	onLoad="['onLoad',_this] call CAU_xFuncViewer_fnc_system";
