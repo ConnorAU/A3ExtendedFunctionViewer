@@ -19,7 +19,8 @@ namespace A3ExtendedFunctionViewer
 		private static readonly char[] VAL_QUOTES = new char[] { '\'', '"' };
 
 		private static readonly char[] VAL_LETTERS = VAL_LETTERS_LOWER.Concat(VAL_LETTERS_UPPER).ToArray();
-		private static readonly char[] VAL_CHARS = new char[] { '_' }.Concat(VAL_LETTERS).ToArray();
+		private static readonly char[] VAL_CHARS = new char[] { '_' }.Concat(VAL_LETTERS).Concat(VAL_DIGITS).ToArray();
+		private static readonly char[] VAL_DIGIT_CHARS = new char[] { '.' }.Concat(VAL_DIGITS).ToArray();
 
 		private static readonly string[] VAL_PREPROCESSOR = new string[] { "include", "define", "undef", "ifdef", "ifndef", "else", "endif", "line" };
 		private static readonly string[] VAL_KEYWORDS = new string[] { "case", "catch", "default", "do", "else", "exit", "exitwith", "for", "foreach", "from", "if", "private", "switch", "then", "throw", "to", "try", "waituntil", "while", "with" };
@@ -122,14 +123,14 @@ namespace A3ExtendedFunctionViewer
 					PushSegment();
 					i = i + index - 1;
 				}
-				else if (VAL_DIGITS.Contains(thisChar))
+				else if (VAL_DIGIT_CHARS.Contains(thisChar))
 				{
 					PushSegment();
 					char[] tmp_segment = textArray.GetRange(i, textLen - i).ToArray();
 					int index = -1;
 					for (int ii = 0; ii < tmp_segment.Length; ii++)
 					{
-						if (!VAL_DIGITS.Contains(tmp_segment[ii]))
+						if (!VAL_DIGIT_CHARS.Contains(tmp_segment[ii]))
 						{
 							index = ii;
 							break;
@@ -191,7 +192,7 @@ namespace A3ExtendedFunctionViewer
 					bool condition = true;
 					for (int ii = 0; ii < segment.Length; ii++)
 					{
-						if (!VAL_DIGITS.Contains(Convert.ToChar(segment.Substring(ii, 1))))
+						if (!VAL_DIGIT_CHARS.Contains(Convert.ToChar(segment.Substring(ii, 1))))
 						{
 							condition = false;
 							break;
