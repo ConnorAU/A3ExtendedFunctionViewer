@@ -211,7 +211,9 @@ switch _mode do {
 
 		private _extReturn = ["callExtension",["init",[_supportedCommands]]] call THIS_FUNC;
 		if (_extReturn == 0) then {
-			_display setVariable [VAR_EXT_LOADED,true];
+			if (profilenamespace getVariable [VAR_EXT_PARSING,true]) then {
+				_display setVariable [VAR_EXT_LOADED,true];
+			};
 			private _handle = addMissionEventHandler ["ExtensionCallback",{["extensionCallback",_this] call THIS_FUNC}];
 			_display setVariable [VAR_EXT_EVH_ID,_handle];
 		} else {
