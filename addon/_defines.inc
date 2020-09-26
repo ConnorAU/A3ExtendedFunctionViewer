@@ -8,6 +8,7 @@
 
 // ~ Operations
 #define QUOTE(a) #a
+#define JOIN(a,b) a##b
 
 #ifdef DISPLAY_NAME
     #define THIS_DISPLAY DISPLAY(DISPLAY_NAME)
@@ -40,18 +41,19 @@
 #define IDC_BUTTON_SIZEDOWN             7
 #define IDC_BUTTON_HIGHLIGHT            8
 #define IDC_BUTTON_LINE_INTERPRET       9
-#define IDC_COMBO_TREE_MODE             10
-#define IDC_BUTTON_TREE_COLLAPSE        11
-#define IDC_BUTTON_TREE_EXPAND          12
-#define IDC_TREE_VIEW                   13
-#define IDC_STATIC_VIEWER_BG            14
-#define IDC_STATIC_VIEWER_FUNC          15
-#define IDC_STATIC_VIEWER_PATH          16
-#define IDC_STRUCTURED_VIEWER_LINES     17
-#define IDC_STRUCTURED_VIEWER_CONTENT   18
-#define IDC_STATIC_VIEWER_LOADBAR       19
-#define IDC_BUTTON_COPY                 20
-#define IDC_BUTTON_EXECUTE              21
-#define IDC_BUTTON_RECOMPILE            22
-#define IDC_BUTTON_RECOMPILE_ALL        23
-#define IDC_BUTTON_CLOSE                24
+#define IDC_BUTTON_EXT_PARSING          10
+#define IDC_COMBO_TREE_MODE             11
+#define IDC_BUTTON_TREE_COLLAPSE        12
+#define IDC_BUTTON_TREE_EXPAND          13
+#define IDC_TREE_VIEW                   14
+#define IDC_STATIC_VIEWER_BG            15
+#define IDC_STATIC_VIEWER_FUNC          16
+#define IDC_STATIC_VIEWER_PATH          17
+#define IDC_STRUCTURED_VIEWER_LINES     18
+#define IDC_STRUCTURED_VIEWER_CONTENT   19
+#define IDC_STATIC_VIEWER_LOADBAR       20
+#define IDC_BUTTON_COPY                 21
+#define IDC_BUTTON_EXECUTE              22
+#define IDC_BUTTON_RECOMPILE            23
+#define IDC_BUTTON_RECOMPILE_ALL        24
+#define IDC_BUTTON_CLOSE                25

@@ -1,10 +1,16 @@
-/*──────────────────────────────────────────────────────┐
-│   Author: Connor                                      │
-│   Steam:  https://steamcommunity.com/id/_connor       │
-│   Github: https://github.com/ConnorAU                 │
-│                                                       │
-│   Please do not modify or remove this comment block   │
-└──────────────────────────────────────────────────────*/
+/* ----------------------------------------------------------------------------
+Project:
+	https://github.com/ConnorAU/A3ExtendedFunctionViewer
+
+Author:
+	ConnorAU - https://github.com/ConnorAU
+
+Function:
+	CAU_xFuncViewer_fnc_system
+
+Description:
+	Handles all tasks related to the extended function viewer UI
+---------------------------------------------------------------------------- */
 
 #define THIS_FUNC CAU_xFuncViewer_fnc_system
 #define DISPLAY_NAME CAU_displayExtendedFunctionViewer
@@ -17,17 +23,22 @@
 #define VAR_LOAD QUOTE(FUNC_SUBVAR(setting_load))
 #define VAR_HIGHLIGHT QUOTE(FUNC_SUBVAR(setting_highlight))
 #define VAR_LINE_INTERPRET QUOTE(FUNC_SUBVAR(setting_line_interpret))
+#define VAR_EXT_PARSING QUOTE(FUNC_SUBVAR(setting_extension_parsing))
 #define VAR_FONT_SIZE QUOTE(FUNC_SUBVAR(setting_font_size))
 #define VAR_TREE_MODE QUOTE(FUNC_SUBVAR(setting_tree_mode))
 
 #define VAR_INIT_COMPLETE QUOTE(FUNC_SUBVAR(init_complete))
+
+#define VAR_EXT_LOADED QUOTE(FUNC_SUBVAR(extension_loaded))
+#define VAR_EXT_EVH_ID QUOTE(FUNC_SUBVAR(extension_callback_handle))
+#define VAR_EXT_TASK_ID QUOTE(FUNC_SUBVAR(extension_task_id))
+#define VAR_EXT_TASK_DATA(id) format["%1_%2",QUOTE(FUNC_SUBVAR(extension_task_data)),id]
 
 #define VAR_SELECTED_FUNC QUOTE(FUNC_SUBVAR(selected_func))
 #define VAR_SELECTED_FUNC_HISTORY QUOTE(FUNC_SUBVAR(selected_func_history))
 
 #define VAR_SAVED_FUNCS QUOTE(FUNC_SUBVAR(saved_func_vars))
 #define VAL_SAVED_FUNC_VAR(f) format["%1_%2",QUOTE(THIS_FUNC),f]
-
 
 #define VAL_LETTERS_LOWER ["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"]
 #define VAL_LETTERS_UPPER ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"]
@@ -42,16 +53,22 @@
 
 #define VAL_PREPROCESSOR ["include","define","undef","ifdef","ifndef","else","endif","line"]
 #define VAL_KEYWORDS ["case","catch","default","do","else","exit","exitwith","for","foreach","from","if","private","switch","then","throw","to","try","waituntil","while","with"]
-#define VAL_LITTERALS ["blufor","civilian","confignull","controlnull","displaynull","diaryrecordnull","east","endl","false","grpnull","independent","linebreak","locationnull","nil","objnull","opfor","pi","resistance","scriptnull","sideambientlife","sideempty","sidelogic","sideunknown","tasknull","teammembernull","true","west"]
+#define VAL_LITERALS ["blufor","civilian","confignull","controlnull","displaynull","diaryrecordnull","east","endl","false","grpnull","independent","linebreak","locationnull","nil","objnull","opfor","pi","resistance","scriptnull","sideambientlife","sideempty","sidelogic","sideunknown","tasknull","teammembernull","true","west"]
 #define VAL_MAGIC_VARS ["_this","_x","_foreachindex","_exception","_thisscript","_thisfsm","_thiseventhandler"]
 #define VAL_NULLS ["nil","controlnull","displaynull","diaryrecordnull","grpnull","locationnull","netobjnull","objnull","scriptnull","tasknull","teammembernull","confignull"]
 
-#define VAL_SYNTAX_ON  "\cau\extendedfunctionviewer\a_highlight.paa"
-#define VAL_SYNTAX_OFF "\cau\extendedfunctionviewer\a_plain.paa"
-#define VAL_LINE_INTERPRET_ON  "\cau\extendedfunctionviewer\hash_highlight.paa"
-#define VAL_LINE_INTERPRET_OFF "\cau\extendedfunctionviewer\hash_plain.paa"
+#define VAL_SYNTAX_ON  "\cau\extendedfunctionviewer\a_on_alt.paa"
+#define VAL_SYNTAX_OFF "\cau\extendedfunctionviewer\a_off.paa"
+#define VAL_LINE_INTERPRET_ON  "\cau\extendedfunctionviewer\hash_on.paa"
+#define VAL_LINE_INTERPRET_OFF "\cau\extendedfunctionviewer\hash_off.paa"
+#define VAL_EXT_PARSING_ON  "\cau\extendedfunctionviewer\vs_on.paa"
+#define VAL_EXT_PARSING_OFF "\cau\extendedfunctionviewer\vs_off.paa"
+
 
 params[["_mode","",[""]],["_params",[]]];
+//private _dev_map = if (isNil "_dev_map") then {[_mode]} else {_dev_map + [_mode]};
+//diag_log _dev_map;
+scopeName _mode;
 
 switch _mode do {
 	case "init":{
@@ -66,6 +83,7 @@ switch _mode do {
 		USE_CTRL(_ctrlButtonSizeDown,IDC_BUTTON_SIZEDOWN);
 		USE_CTRL(_ctrlButtonHighlight,IDC_BUTTON_HIGHLIGHT);
 		USE_CTRL(_ctrlButtonLineInterpret,IDC_BUTTON_LINE_INTERPRET);
+		USE_CTRL(_ctrlButtonExtParsing,IDC_BUTTON_EXT_PARSING);
 		USE_CTRL(_ctrlComboTree,IDC_COMBO_TREE_MODE);
 		USE_CTRL(_ctrlButtonCollapse,IDC_BUTTON_TREE_COLLAPSE);
 		USE_CTRL(_ctrlButtonExpand,IDC_BUTTON_TREE_EXPAND);
@@ -122,6 +140,10 @@ switch _mode do {
 		_ctrlButtonLineInterpret ctrlSetText ([VAL_LINE_INTERPRET_OFF,VAL_LINE_INTERPRET_ON] select (profilenamespace getVariable [VAR_LINE_INTERPRET,false]));
 		_ctrlButtonLineInterpret ctrlSetTooltip "Toggle #line interpeting (preprocessFileLineNumbers and Compiled Function modes only)";
 		_ctrlButtonLineInterpret ctrlAddEventHandler ["ButtonClick",{["lineInterpretButtonClick",_this] call THIS_FUNC}];
+
+		_ctrlButtonExtParsing ctrlSetText ([VAL_EXT_PARSING_OFF,VAL_EXT_PARSING_ON] select (profilenamespace getVariable [VAR_EXT_PARSING,true]));
+		_ctrlButtonExtParsing ctrlSetTooltip "Toggle extension parsing. Extension parsing is considerably faster than sqf parsing, but is not supported in all scenarios.";
+		_ctrlButtonExtParsing ctrlAddEventHandler ["ButtonClick",{["extensionParsingButtonClick",_this] call THIS_FUNC}];
 
 		{_ctrlComboTree lbAdd _x} forEach [
 			"CfgFunctions Hierarchy",
@@ -186,6 +208,17 @@ switch _mode do {
 		_display setVariable ["supportedOperators",_supportedOperators];
 		_display setVariable ["supportedCommands",_supportedCommands];
 
+		private _extReturn = ["callExtension",["init",[_supportedCommands]]] call THIS_FUNC;
+		if (_extReturn == 0) then {
+			_display setVariable [VAR_EXT_LOADED,true];
+			private _handle = addMissionEventHandler ["ExtensionCallback",{["extensionCallback",_this] call THIS_FUNC}];
+			_display setVariable [VAR_EXT_EVH_ID,_handle];
+		} else {
+			_ctrlButtonExtParsing ctrlEnable false;
+			_ctrlButtonExtParsing ctrlRemoveAllEventHandlers "ButtonClick";
+			_ctrlButtonExtParsing ctrlSetTooltip "Extension parsing is not available.";
+		};
+
 		_display setVariable [VAR_INIT_COMPLETE,true];
 
 		["populateTree"] call THIS_FUNC;
@@ -194,6 +227,11 @@ switch _mode do {
 		uiNamespace setVariable [QUOTE(DISPLAY_NAME),_params#0];
 	};
 	case "onUnload":{
+		_params params ["_display"];
+		private _handle = _display getVariable [VAR_EXT_EVH_ID,-1];
+		if (_handle > -1) then {
+			removeMissionEventHandler ["ExtensionCallback",_handle];
+		};
 		saveProfileNamespace;
 	};
 
@@ -463,6 +501,7 @@ switch _mode do {
 			[VAR_LOAD,0],
 			[VAR_HIGHLIGHT,true],
 			[VAR_LINE_INTERPRET,false],
+			[VAR_EXT_PARSING,true],
 			[VAR_TREE_MODE,0]
 		]
 	};
@@ -513,6 +552,17 @@ switch _mode do {
 		private _state = !(profilenamespace getVariable [VAR_LINE_INTERPRET,false]);
 		_ctrl ctrlSetText ([VAL_LINE_INTERPRET_OFF,VAL_LINE_INTERPRET_ON] select _state);
 		profilenamespace setVariable [VAR_LINE_INTERPRET,_state];
+
+		["loadFunction"] call THIS_FUNC;
+	};
+	case "extensionParsingButtonClick":{
+		_params params ["_ctrl"];
+
+		private _state = !(profilenamespace getVariable [VAR_EXT_PARSING,true]);
+		_ctrl ctrlSetText ([VAL_EXT_PARSING_OFF,VAL_EXT_PARSING_ON] select _state);
+		profilenamespace setVariable [VAR_EXT_PARSING,_state];
+
+		(ctrlParent _ctrl) setVariable [VAR_EXT_LOADED,_state];
 
 		["loadFunction"] call THIS_FUNC;
 	};
@@ -585,16 +635,6 @@ switch _mode do {
 
 		private _fontSize = profileNamespace getVariable [VAR_FONT_SIZE,1];
 
-		private _text = ["replaceStructuredCharacters",_content] call THIS_FUNC;
-
-		// some files dont use [13,10] new lines :(
-		_text = ["stringReplace",[_text,tostring[13],""]] call THIS_FUNC;
-		// blank lines dont maintain original line height on modified sizes
-		_text = ["stringReplace",[_text,tostring[10],"─<br/>"]] call THIS_FUNC;
-		_text = ["stringReplace",[_text,toString[9],"&#32;&#32;&#32;&#32;"]] call THIS_FUNC;
-		_text = ["stringReplace",[_text,"    ","&#32;&#32;&#32;&#32;"]] call THIS_FUNC;
-		_text = format["<t color='%1' size='%2'>",["themeColour",""] call THIS_FUNC,_fontSize]+_text+"</t>";
-
 		private _lineInterpretState = profilenamespace getVariable [VAR_LINE_INTERPRET,false];
 		private _lineInterpretStateInt = [0,1] select _lineInterpretState;
 
@@ -605,47 +645,73 @@ switch _mode do {
 		private _loadModes = _savedLineCounts param [_fileLoadMode,[]];
 		private _lineCount = _loadModes param [_lineInterpretStateInt,[]];
 
+		private _extLoaded = _display getVariable [VAR_EXT_LOADED,false];
+		private _text = _content;
+		private _replaceChars = {
+			_text = ["replaceStructuredCharacters",_text] call THIS_FUNC;
+			// some files dont use [13,10] new lines :(
+			_text = ["stringReplace",[_text,tostring[13],""]] call THIS_FUNC;
+			// blank lines dont maintain original line height on modified sizes
+			_text = ["stringReplace",[_text,tostring[10],"─<br/>"]] call THIS_FUNC;
+			_text = ["stringReplace",[_text,toString[9],"&#32;&#32;&#32;&#32;"]] call THIS_FUNC;
+			_text = ["stringReplace",[_text,"    ","&#32;&#32;&#32;&#32;"]] call THIS_FUNC;
+		};
+
 		if (_lineCount isEqualTo []) then {
-			if (_lineInterpretState && (_fileLoadMode in [2,3])) then {
-				/*
-					There are a few things to explain here:
-					1. It splits the script string by line so each line is its own string snippet
-					2. It splits each line snippet with a space delimeter to seperate the line number value into its own string
-					3. It searches for #line at the end of each snippet because sometimes '#line N "script\path"' is appended to the end of a line with existing script commands
-					4. It ensures the snippet after #line is a number, otherwise it is most likely #line written into a string, like this mod does a few lines down
-				*/
-				private _displayI = 1;
-				private _textTMP = ["stringSplitString",[_text,"<br/>"]] call THIS_FUNC;
-				for "_i" from 0 to count _textTMP - 1 do {
-					private _line = _textTMP#_i;
-					if ("#line " in _line) then {
-						private _lineSplit = _line splitString " ";
-						private _lineNumber = parseNumber(_lineSplit#((_lineSplit findIf {["stringEndsWith",[_x,"#line"]] call THIS_FUNC})+1));
-						if (_lineNumber > 0) then {
-							_displayI = (_lineNumber - 1) max 0;
-							_lineCount pushBack "─";
+			if _extLoaded then {
+				// Call extension to count lines, wait for line breaks
+				private _taskID = ["callExtension",["countlines",[text _text,_lineInterpretState && _fileLoadMode in [2,3]]]] call THIS_FUNC;
+				if (_taskID == -2) then {_this call THIS_FUNC} else {
+					_display setVariable [VAR_EXT_TASK_DATA(_taskID),[_savedVar,_fileLoadMode,_lineInterpretStateInt]];
+				};
+				breakOut _mode;
+			} else {
+				call _replaceChars;
+
+				if (_lineInterpretState && _fileLoadMode in [2,3]) then {
+					/*
+						There are a few things to explain here:
+						1. It splits the script string by line so each line is its own string snippet
+						2. It splits each line snippet with a space delimeter to seperate the line number value into its own string
+						3. It searches for #line at the end of each snippet because sometimes '#line N "script\path"' is appended to the end of a line with existing script commands
+						4. It ensures the snippet after #line is a number, otherwise it is most likely #line written into a string, like this mod does a few lines down
+					*/
+					private _displayI = 1;
+					private _textTMP = ["stringSplitString",[_text,"<br/>"]] call THIS_FUNC;
+					for "_i" from 0 to count _textTMP - 1 do {
+						private _line = _textTMP#_i;
+						if ("#line " in _line) then {
+							private _lineSplit = _line splitString " ";
+							private _lineNumber = parseNumber(_lineSplit#((_lineSplit findIf {["stringEndsWith",[_x,"#line"]] call THIS_FUNC})+1));
+							if (_lineNumber > 0) then {
+								_displayI = (_lineNumber - 1) max 0;
+								_lineCount pushBack "─";
+							} else {
+								_lineCount pushBack str _displayI;
+							};
 						} else {
 							_lineCount pushBack str _displayI;
 						};
-					} else {
-						_lineCount pushBack str _displayI;
+						_displayI = _displayI + 1;
 					};
-					_displayI = _displayI + 1;
+				} else {
+					for "_i" from 1 to (["stringCount",[_text,"<br/>"]] call THIS_FUNC)+1 do {
+						_lineCount pushBack str _i;
+					};
 				};
-			} else {
-				for "_i" from 1 to (["stringCount",[_text,"<br/>"]] call THIS_FUNC)+1 do {
-					_lineCount pushBack str _i;
-				};
-			};
-			private _savedFuncs = _ctrlViewerContent getVariable [VAR_SAVED_FUNCS,[]];
-			_savedFuncs pushBackUnique _savedVar;
-			_ctrlViewerContent setVariable [VAR_SAVED_FUNCS,_savedFuncs];
 
-			_loadModes set [_lineInterpretStateInt,_lineCount];
-			_savedLineCounts set [_fileLoadMode,_loadModes];
-			_savedFunc set [0,_savedLineCounts];
-			_ctrlViewerContent setVariable [_savedVar,_savedFunc];
-		};
+				private _savedFuncs = _ctrlViewerContent getVariable [VAR_SAVED_FUNCS,[]];
+				_savedFuncs pushBackUnique _savedVar;
+				_ctrlViewerContent setVariable [VAR_SAVED_FUNCS,_savedFuncs];
+
+				_loadModes set [_lineInterpretStateInt,_lineCount];
+				_savedLineCounts set [_fileLoadMode,_loadModes];
+				_savedFunc set [0,_savedLineCounts];
+				_ctrlViewerContent setVariable [_savedVar,_savedFunc];
+			};
+		} else {call _replaceChars};
+
+		_text = format["<t color='%1' size='%2'>",["themeColour",""] call THIS_FUNC,_fontSize]+_text+"</t>";
 		_lineCount = format["<t color='%1' size='%2'>",["themeColour","lineNumber"] call THIS_FUNC,_fontSize]+(_lineCount joinString "<br/>")+"</t>";
 
 		_ctrlViewerLines ctrlSetStructuredText parseText _lineCount;
@@ -681,167 +747,202 @@ switch _mode do {
 		_ctrlViewerLoadbar ctrlSetPosition _ctrlViewerLoadbarP;
 		_ctrlViewerLoadbar ctrlCommit 0;
 		if (profileNamespace getVariable [VAR_HIGHLIGHT,true]) then {
-			_thread = ["highlightContent",[_func,_content,_display,_ctrlComboLoad,_ctrlViewerContent,_ctrlViewerLoadbar]] spawn THIS_FUNC;
+			_thread = ["highlightContent",[_func,_content]] spawn THIS_FUNC;
 			_ctrlViewerLoadbar setVariable ["thread",_thread];
 		};
 	};
 	case "highlightContent":{
-		_params params ["_func","_text","_display","_ctrlComboLoad","_ctrlViewerContent","_ctrlViewerLoadbar"];
+		_params params ["_func","_text"];
+
+		USE_DISPLAY(THIS_DISPLAY);
+		USE_CTRL(_ctrlComboLoad,IDC_COMBO_LOAD);
+		USE_CTRL(_ctrlViewerLoadbar,IDC_STATIC_VIEWER_LOADBAR);
+		USE_CTRL(_ctrlViewerContent,IDC_STRUCTURED_VIEWER_CONTENT);
 
 		private _savedVar = VAL_SAVED_FUNC_VAR(_func);
 		private _savedFunc = _ctrlViewerContent getVariable [_savedVar,[]];
 
 		private _theme = profileNamespace getVariable [VAR_THEME,0];
-		private _mode = lbCurSel _ctrlComboLoad;
+		private _fileLoadMode = lbCurSel _ctrlComboLoad;
 
 		private _savedContents = _savedFunc param [1,[]];
 		private _themeFunc = _savedContents param [_theme,[]];
-		private _output = _themeFunc param [_mode,""];
+		private _output = _themeFunc param [_fileLoadMode,""];
 
 		private _ctrlViewerLoadbarP = ctrlPosition _ctrlViewerLoadbar;
 		private _ctrlViewerLoadbarW = _ctrlViewerLoadbar getVariable ["width",0];
 
 		if (_output == "") then {
-			_output = [];
-			private _textArray = _text splitString "";
-			private _segment = "";
+			private _extLoaded = _display getVariable [VAR_EXT_LOADED,false];
+			if _extLoaded then {
+				// Execute in unscheduled to ensure the script exits before the callback event fires
+				isNil {
+					private _themeColours = [
+						"comment",
+						"string",
+						"number",
+						"magicVar",
+						"localVar",
+						"function",
+						"preprocessor",
+						"keyword",
+						"literal",
+						"null",
+						"command",
+						"globalVar"
+					] apply {["themeColour",_x] call THIS_FUNC};
 
-			private _letters = VAL_LETTERS;
-			private _varChars = VAL_VAR_CHARS;
-			private _digitChars = VAL_DIGIT_CHARS;
-			private _spaceTab = [tostring[32],tostring[9]];
-			private _supportedOperators = _display getVariable ["supportedOperators",[]];
-			private _supportedCommands = _display getVariable ["supportedCommands",[]];
+					private _taskID = ["callExtension",["highlight",[text _text,_themeColours]]] call THIS_FUNC;
+					if (_taskID == -2) then {_this call THIS_FUNC} else {
+						_display setVariable [VAR_EXT_TASK_DATA(_taskID),[_savedVar,_fileLoadMode,_theme,_params]];
+					};
 
-			private _push = {
-				if (_segment != "") then {
-					_output pushBack _segment;
-					_segment = "";
+					breakOut _mode;
 				};
-			};
+			} else {
+				_output = [];
+				private _textArray = _text splitString "";
+				private _segment = "";
 
-			private _textLen = count _text;
+				private _letters = VAL_LETTERS;
+				private _varChars = VAL_VAR_CHARS;
+				private _digitChars = VAL_DIGIT_CHARS;
+				private _spaceTab = [tostring[32],tostring[9]];
+				private _supportedOperators = _display getVariable ["supportedOperators",[]];
+				private _supportedCommands = _display getVariable ["supportedCommands",[]];
 
-			for "_i" from 0 to (_textLen - 1) do {
-				if (isNull _ctrlViewerLoadbar) then {terminate _thisScript};
-				_ctrlViewerLoadbarP set [2,linearConversion[0,_textLen,_i,0,0.75*_ctrlViewerLoadbarW,true]];
-				_ctrlViewerLoadbar ctrlSetPosition _ctrlViewerLoadbarP;
-				_ctrlViewerLoadbar ctrlCommit 0;
+				private _push = {
+					if (_segment != "") then {
+						_output pushBack _segment;
+						_segment = "";
+					};
+				};
 
-				private _thisChar = _textArray param [_i,""];
-				private _prevChar = _textArray param [_i - 1,""];
-				private _nextChar = _textArray param [_i + 1,""];
+				private _textLen = count _text;
 
-				switch true do {
-					case (_thisChar == "/" && _nextChar == "*"):{
-						call _push;
-						_segment = _text select [_i,_textLen];
-						_index = 4 + ((_segment select [2,count _segment]) find ("*/"));
-						if (_index == -1) then {_index = count _segment};
-						_segment = _segment select [0,_index];
-						call _push;
-						_i = _i + _index - 1;
-					};
-					case (_thisChar == "/" && _nextChar == "/"):{
-						call _push;
-						_segment = _text select [_i,_textLen];
-						_index = _segment find tostring[10];
-						if (_index == -1) then {_index = count _segment};
-						_segment = _segment select [0,_index];
-						call _push;
-						_i = _i + _index - 1;
-					};
-					case (_thisChar in VAL_QUOTES):{
-						call _push;
-						_segment = _text select [_i,_textLen];
-						_index = 2 + ((_segment select [1,count _segment]) find _thisChar);
-						if (_index == -1) then {_index = count _segment};
-						_segment = _segment select [0,_index];
-						call _push;
-						_i = _i + _index - 1;
-					};
-					case (_thisChar in _digitChars):{
-						call _push;
-						private _tmp_segment = _textArray select [_i,_textLen];
-						_tmp_segment = _tmp_segment select [0,count _tmp_segment];
-						_index = _tmp_segment findIf {!(_x in _digitChars)};
-						if (_index == -1) then {_index = count _tmp_segment};
-						_segment = (_text select [_i,_textLen]) select [0,_index];
-						call _push;
-						_i = _i + _index - 1;
-					};
-					case (_thisChar in _varChars):{
-						call _push;
-						private _tmp_segment = _textArray select [_i,_textLen];
-						_tmp_segment = _tmp_segment select [0,count _tmp_segment];
-						_index = _tmp_segment findIf {!(_x in _varChars)};
-						if (_index == -1) then {_index = count _tmp_segment};
-						_segment = (_text select [_i,_textLen]) select [0,_index];
-						call _push;
-						_i = _i + _index - 1;
-					};
-					case (_thisChar in VAL_BRACKETS);
-					case (_thisChar in [",","#",toString[10]]):{
-						call _push;
-						_segment = _thisChar;
-						call _push;
-					};
-					default {
-						if (
-							(_thisChar in _spaceTab && !(_prevChar in _spaceTab)) ||
-							{_prevChar in _spaceTab && !(_thisChar in _spaceTab)}
-						) then {
+				for "_i" from 0 to (_textLen - 1) do {
+					if (isNull _ctrlViewerLoadbar) then {terminate _thisScript};
+					_ctrlViewerLoadbarP set [2,linearConversion[0,_textLen,_i,0,0.75*_ctrlViewerLoadbarW,true]];
+					_ctrlViewerLoadbar ctrlSetPosition _ctrlViewerLoadbarP;
+					_ctrlViewerLoadbar ctrlCommit 0;
+
+					private _thisChar = _textArray param [_i,""];
+					private _prevChar = _textArray param [_i - 1,""];
+					private _nextChar = _textArray param [_i + 1,""];
+
+					switch true do {
+						case (_thisChar == "/" && _nextChar == "*"):{
+							call _push;
+							_segment = _text select [_i,_textLen];
+							_index = 4 + ((_segment select [2,count _segment]) find ("*/"));
+							if (_index == -1) then {_index = count _segment};
+							_segment = _segment select [0,_index];
+							call _push;
+							_i = _i + _index - 1;
+						};
+						case (_thisChar == "/" && _nextChar == "/"):{
+							call _push;
+							_segment = _text select [_i,_textLen];
+							_index = _segment find tostring[10];
+							if (_index == -1) then {_index = count _segment};
+							_segment = _segment select [0,_index];
+							call _push;
+							_i = _i + _index - 1;
+						};
+						case (_thisChar in VAL_QUOTES):{
+							call _push;
+							_segment = _text select [_i,_textLen];
+							_index = 2 + ((_segment select [1,count _segment]) find _thisChar);
+							if (_index == -1) then {_index = count _segment};
+							_segment = _segment select [0,_index];
+							call _push;
+							_i = _i + _index - 1;
+						};
+						case (_thisChar in _digitChars):{
+							call _push;
+							private _tmp_segment = _textArray select [_i,_textLen];
+							_tmp_segment = _tmp_segment select [0,count _tmp_segment];
+							_index = _tmp_segment findIf {!(_x in _digitChars)};
+							if (_index == -1) then {_index = count _tmp_segment};
+							// TODO: simplify double select
+							_segment = (_text select [_i,_textLen]) select [0,_index];
+							call _push;
+							_i = _i + _index - 1;
+						};
+						case (_thisChar in _varChars):{
+							call _push;
+							private _tmp_segment = _textArray select [_i,_textLen];
+							_tmp_segment = _tmp_segment select [0,count _tmp_segment];
+							_index = _tmp_segment findIf {!(_x in _varChars)};
+							if (_index == -1) then {_index = count _tmp_segment};
+							// TODO: simplify double select
+							_segment = (_text select [_i,_textLen]) select [0,_index];
+							call _push;
+							_i = _i + _index - 1;
+						};
+						case (_thisChar in VAL_BRACKETS);
+						case (_thisChar in [",","#",toString[10]]):{
+							call _push;
+							_segment = _thisChar;
 							call _push;
 						};
-						_segment = _segment + _thisChar;
+						default {
+							if (
+								(_thisChar in _spaceTab && !(_prevChar in _spaceTab)) ||
+								{_prevChar in _spaceTab && !(_thisChar in _spaceTab)}
+							) then {
+								call _push;
+							};
+							_segment = _segment + _thisChar;
+						};
 					};
 				};
+
+				call _push;
+
+				private _outputLen = count _output - 1;
+				{
+					if (isNull _ctrlViewerLoadbar) then {terminate _thisScript};
+					_ctrlViewerLoadbarP set [2,linearConversion[0,_outputLen,_forEachIndex,0.75*_ctrlViewerLoadbarW,0.99*_ctrlViewerLoadbarW,true]];
+					_ctrlViewerLoadbar ctrlSetPosition _ctrlViewerLoadbarP;
+					_ctrlViewerLoadbar ctrlCommit 0;
+
+					private _type = switch true do {
+						case ((_x select [0,2]) in ["/*","//"]):{"comment"};
+						case ((_x select [0,1]) in ["'",""""]):{"string"};
+						case ((_x select [0,1]) in _digitChars && {((_x splitstring "") - _digitChars) isEqualTo []}):{"number"};
+						case (tolower _x in VAL_MAGIC_VARS):{"magicVar"};
+						case ((_x select [0,1]) in ["_"] && {((_x splitstring "") - _varChars) isEqualTo []}):{"localVar"};
+						case ((["_fnc_",_x select [1,count _x - 2]] call BIS_fnc_inString) && {((_x splitstring "") - _varChars) isEqualTo []}):{"function"};
+						//case (_x in VAL_BRACKETS):{"bracket"};
+						//case (_x in _supportedOperators):{"operator"};
+						case (tolower _x in VAL_PREPROCESSOR && {(_output param [_forEachIndex - 1,""]) == "#"}):{"preprocessor"};
+						case (tolower _x in VAL_KEYWORDS):{"keyword"};
+						case (tolower _x in VAL_LITERALS):{"literal"};
+						case (tolower _x in VAL_NULLS):{"null"};
+						case (tolower _x in _supportedCommands):{"command"};
+						case (((_x splitstring "") - _varChars) isEqualTo []):{"globalVar"};
+						default {""};
+					};
+					_x = ["replaceStructuredCharacters",_x] call THIS_FUNC;
+					_output set [_forEachIndex,
+						if (_type == "") then {_x} else {
+							"<t color='"+(["themeColour",_type] call THIS_FUNC)+"'>"+_x+"</t>"
+						}
+					];
+				} foreach _output;
+
+				_output = ["stringReplace",[_output joinstring "",tostring[13],""]] call THIS_FUNC;
+				// blank lines dont maintain original line height on modified sizes
+				_output = ["stringReplace",[_output,toString[10],"─<br/>"]] call THIS_FUNC;
+				_output = ["stringReplace",[_output,toString[9],"&#32;&#32;&#32;&#32;"]] call THIS_FUNC;
 			};
-
-			call _push;
-
-			private _outputLen = count _output - 1;
-			{
-				if (isNull _ctrlViewerLoadbar) then {terminate _thisScript};
-				_ctrlViewerLoadbarP set [2,linearConversion[0,_outputLen,_forEachIndex,0.75*_ctrlViewerLoadbarW,0.99*_ctrlViewerLoadbarW,true]];
-				_ctrlViewerLoadbar ctrlSetPosition _ctrlViewerLoadbarP;
-				_ctrlViewerLoadbar ctrlCommit 0;
-
-				private _type = switch true do {
-					case ((_x select [0,2]) in ["/*","//"]):{"comment"};
-					case ((_x select [0,1]) in ["'",""""]):{"string"};
-					case ((_x select [0,1]) in _digitChars && {((_x splitstring "") - _digitChars) isEqualTo []}):{"number"};
-					case (tolower _x in VAL_MAGIC_VARS):{"magicVar"};
-					case ((_x select [0,1]) in ["_"] && {((_x splitstring "") - _varChars) isEqualTo []}):{"localVar"};
-					case ((["_fnc_",_x select [1,count _x - 2]] call BIS_fnc_inString) && {((_x splitstring "") - _varChars) isEqualTo []}):{"function"};
-					//case (_x in VAL_BRACKETS):{"bracket"};
-					//case (_x in _supportedOperators):{"operator"};
-					case (tolower _x in VAL_PREPROCESSOR && {(_output param [_forEachIndex - 1,""]) == "#"}):{"preprocessor"};
-					case (tolower _x in VAL_KEYWORDS):{"keyword"};
-					case (tolower _x in VAL_LITTERALS):{"litteral"};
-					case (tolower _x in VAL_NULLS):{"null"};
-					case (tolower _x in _supportedCommands):{"command"};
-					case (((_x splitstring "") - _varChars) isEqualTo []):{"globalVar"};
-					default {""};
-				};
-				_x = ["replaceStructuredCharacters",_x] call THIS_FUNC;
-				_output set [_forEachIndex,
-					if (_type == "") then {_x} else {
-						"<t color='"+(["themeColour",_type] call THIS_FUNC)+"'>"+_x+"</t>"
-					}
-				];
-			} foreach _output;
-
-			_output = ["stringReplace",[_output joinstring "",tostring[13],""]] call THIS_FUNC;
-			// blank lines dont maintain original line height on modified sizes
-			_output = ["stringReplace",[_output,toString[10],"─<br/>"]] call THIS_FUNC;
-			_output = ["stringReplace",[_output,toString[9],"&#32;&#32;&#32;&#32;"]] call THIS_FUNC;
 
 			private _savedFuncs = _ctrlViewerContent getVariable [VAR_SAVED_FUNCS,[]];
 			_savedFuncs pushBackUnique _savedVar;
 			_ctrlViewerContent setVariable [VAR_SAVED_FUNCS,_savedFuncs];
 
-			_themeFunc set [_mode,_output];
+			_themeFunc set [_fileLoadMode,_output];
 			_savedContents set [_theme,_themeFunc];
 			_savedFunc set [1,_savedContents];
 			_ctrlViewerContent setVariable [_savedVar,_savedFunc];
@@ -871,13 +972,97 @@ switch _mode do {
 			//case "operator":		{[]};
 			case "preprocessor":	{["#9cdcfe","#001980","#e06c75","#e4564a"]};
 			case "keyword":			{["#c586c0","#af2adb","#c678de","#a626a4"]};
-			case "litteral":		{["#569cd6","#033cff","#e5c07b","#e4564a"]};
+			case "literal":			{["#569cd6","#033cff","#e5c07b","#e4564a"]};
 			case "null":			{["#569cd6","#795e26","#d19a66","#986801"]};
 			case "command":			{["#dcdcaa","#795e26","#61afef","#4178f2"]};
 			case "globalVar":		{["#e8e8e7","#001980","#56b6c2","#0084bc"]};
 
 			default 				{["#d4d4d4","#000000","#bbbbbb","#333333"]};
 		})#_theme;
+	};
+
+
+	case "callExtension":{
+		_params params ["_func","_data"];
+		private _return = "ExtendedFunctionViewer" callExtension [_func,_data];
+		_return params ["","_taskID"];
+		USE_DISPLAY(THIS_DISPLAY);
+		_display setVariable [VAR_EXT_TASK_ID,_taskID];
+		if (_taskID == -2) then {
+			[
+				"Extension parsing encountered an error.<br/>Reverting to sqf parsing.",
+				"ExtendedFunctionViewer",
+				true,false,
+				"\a3\3den\data\displays\display3denmsgbox\picture_ca.paa",
+				_display
+			] call BIS_fnc_3DENShowMessage;
+
+			_display setVariable [VAR_EXT_LOADED,false];
+
+			USE_CTRL(_ctrlButtonExtParsing,IDC_BUTTON_EXT_PARSING);
+			_ctrlButtonExtParsing ctrlEnable false;
+			_ctrlButtonExtParsing ctrlRemoveAllEventHandlers "ButtonClick";
+			_ctrlButtonExtParsing ctrlSetTooltip "Extension parsing is not available.";
+		};
+		_taskID
+	};
+	case "extensionCallback":{
+		_params params ["_name","_func","_data"];
+		if (_name != "cau_extendedfunctionviewer") exitWith {};
+
+		(_func splitString ":") params ["_func","_taskID"];
+		_taskID = parseNumber _taskID;
+
+		USE_DISPLAY(THIS_DISPLAY);
+
+		private _activeTaskID = _display getVariable [VAR_EXT_TASK_ID,-1];
+		if (_taskID != _activeTaskID) exitWith {};
+
+		private _taskData = _display getVariable [VAR_EXT_TASK_DATA(_taskID),[]];
+		_taskData params ["_savedVar","_fileLoadMode"];
+
+		USE_CTRL(_ctrlViewerContent,IDC_STRUCTURED_VIEWER_CONTENT);
+
+		private _savedFunc = _ctrlViewerContent getVariable [_savedVar,[]];
+		private _savedFuncs = _ctrlViewerContent getVariable [VAR_SAVED_FUNCS,[]];
+		_savedFuncs pushBackUnique _savedVar;
+		_ctrlViewerContent setVariable [VAR_SAVED_FUNCS,_savedFuncs];
+
+		switch _func do {
+			case "countlines":{
+				_taskData params ["","","_lineInterpretStateInt"];
+
+				private _savedLineCounts = _savedFunc param [0,[]];
+				private _loadModes = _savedLineCounts param [_fileLoadMode,[]];
+				private _lineCount = _loadModes param [_lineInterpretStateInt,[]];
+
+				_loadModes set [_lineInterpretStateInt,parseSimpleArray toString parseSimpleArray _data];
+				_savedLineCounts set [_fileLoadMode,_loadModes];
+				_savedFunc set [0,_savedLineCounts];
+				_ctrlViewerContent setVariable [_savedVar,_savedFunc];
+
+				["loadFunction"] call THIS_FUNC;
+			};
+			case "highlight":{
+				_taskData params ["","","_theme","_arguments"];
+
+				private _savedContents = _savedFunc param [1,[]];
+				private _themeFunc = _savedContents param [_theme,[]];
+
+				_themeFunc set [_fileLoadMode,toString parseSimpleArray _data];
+				_savedContents set [_theme,_themeFunc];
+				_savedFunc set [1,_savedContents];
+				_ctrlViewerContent setVariable [_savedVar,_savedFunc];
+
+				USE_CTRL(_ctrlViewerLoadbar,IDC_STATIC_VIEWER_LOADBAR);
+				private _thread = _ctrlViewerLoadbar getVariable ["thread",scriptNull];
+				terminate _thread;
+				_thread = ["highlightContent",_arguments] spawn THIS_FUNC;
+				_ctrlViewerLoadbar setVariable ["thread",_thread];
+			};
+		};
+
+		_display setVariable [VAR_EXT_TASK_DATA(_taskID),nil];
 	};
 
 
