@@ -146,9 +146,10 @@ switch _mode do {
 		_ctrlButtonExtParsing ctrlAddEventHandler ["ButtonClick",{["extensionParsingButtonClick",_this] call THIS_FUNC}];
 
 		{_ctrlComboTree lbAdd _x} forEach [
-			"CfgFunctions Hierarchy",
-			"CfgFunctions Parent Groups",
-			"Function Tags",
+			"CfgFunctions - Hierarchy",
+			"CfgFunctions - Parent Groups",
+			"CfgFunctions - Function Tags",
+			"CfgScriptPaths - UI Functions",
 			"Viewed Function History"
 		];
 		_ctrlComboTree ctrlSetTooltip "Sorting options";
@@ -246,45 +247,6 @@ switch _mode do {
 		private _noSearch = _searchTerm == "";
 		private _mode = profileNamespace getVariable [VAR_TREE_MODE,lbCurSel _ctrlComboTree];
 
-		private _buildTreeData = {
-			params ["_config","_name"];
-			private _isMissionConfig = _config isEqualTo missionConfigFile;
-			private _treeData = [_name,[]];
-			{
-				private _rootTag = if (isText(_x >> "tag")) then {getText(_x >> "tag")} else {configName _x};
-				private _rootData = [configName _x,_rootTag,[]];
-				{
-					private _subFile = if (isText(_x >> "file")) then {getText(_x >> "file")} else {
-						if _isMissionConfig then {"functions\"+configName _x} else {""};
-					};
-					private _subData = [configName _x,[]];
-					{
-						private _fileFile = getText(_x >> "file");
-						private _finalVar = format["%1_fnc_%2",_rootTag,configName _x];
-						private _finalFile = if (_fileFile != "") then {_fileFile} else {
-							format[
-								"%1fn_%2%3",
-								format[
-									"%1%2",_subFile,
-									["\",""] select (["stringEndsWith",[_subFile,"\"]] call THIS_FUNC)
-								],
-								configName _x,
-								if (isText(_x >> "ext")) then {getText(_x >> "ext")} else {".sqf"}
-							]
-						};
-						if (_noSearch || {
-							([_searchTerm,_finalVar] call BIS_fnc_inString) ||
-							([_searchTerm,_finalFile] call BIS_fnc_inString)
-						}) then {
-							(_subData#1) pushback [configname _x,_finalVar,_finalFile];
-						};
-					} forEach ("true" configClasses _x);
-					(_rootData#2) pushback _subData;
-				} foreach ("true" configClasses _x);
-				(_treeData#1) pushback _rootData;
-			} foreach ("true" configClasses (_config >> "cfgfunctions"));
-			_treeData
-		};
 		private _finalizePath = {
 			if ((_ctrlTree tvCount _this) > 0) then {
 				_ctrlTree tvSort [_this,false];
@@ -299,112 +261,205 @@ switch _mode do {
 		// bug fix: "tvCollapseAll" hides new entries
 		tvExpandAll _ctrlTree;
 
-		{
-			_x params ["_configName","_configData"];
-
-			switch _mode do {
-				case 0:{
-					private _configFileIndex = _ctrlTree tvAdd [[],_configName];
+		if (_mode != 3) then {
+			// Standard load from CfgFunctions
+			private _buildTreeData = {
+				params ["_config","_name"];
+				private _isMissionConfig = _config isEqualTo missionConfigFile;
+				private _treeData = [_name,[]];
+				{
+					private _rootTag = if (isText(_x >> "tag")) then {getText(_x >> "tag")} else {configName _x};
+					private _rootData = [configName _x,_rootTag,[]];
 					{
-						_x params ["_rootName","","_rootData"];
-						private _rootIndex = _ctrlTree tvAdd [[_configFileIndex],_rootName];
+						private _subFile = if (isText(_x >> "file")) then {getText(_x >> "file")} else {
+							if _isMissionConfig then {"functions\"+configName _x} else {""};
+						};
+						private _subData = [configName _x,[]];
 						{
-							_x params ["_subName","_subData"];
-							private _subIndex = _ctrlTree tvAdd [[_configFileIndex,_rootIndex],_subName];
+							private _fileFile = getText(_x >> "file");
+							private _finalVar = format["%1_fnc_%2",_rootTag,configName _x];
+							private _finalFile = if (_fileFile != "") then {_fileFile} else {
+								format[
+									"%1fn_%2%3",
+									format[
+										"%1%2",_subFile,
+										["\",""] select (["stringEndsWith",[_subFile,"\"]] call THIS_FUNC)
+									],
+									configName _x,
+									if (isText(_x >> "ext")) then {getText(_x >> "ext")} else {".sqf"}
+								]
+							};
+							if (_noSearch || {
+								([_searchTerm,_finalVar] call BIS_fnc_inString) ||
+								([_searchTerm,_finalFile] call BIS_fnc_inString)
+							}) then {
+								(_subData#1) pushback [configname _x,_finalVar,_finalFile];
+							};
+						} forEach ("true" configClasses _x);
+						(_rootData#2) pushback _subData;
+					} foreach ("true" configClasses _x);
+					(_treeData#1) pushback _rootData;
+				} foreach ("true" configClasses (_config >> "cfgfunctions"));
+				_treeData
+			};
+
+			{
+				_x params ["_configName","_configData"];
+
+				switch _mode do {
+					case 0:{
+						private _configFileIndex = _ctrlTree tvAdd [[],_configName];
+						{
+							_x params ["_rootName","","_rootData"];
+							private _rootIndex = _ctrlTree tvAdd [[_configFileIndex],_rootName];
 							{
-								_x params ["_fileName","_fileVar","_filePath"];
-								private _fileIndex = _ctrlTree tvAdd [[_configFileIndex,_rootIndex,_subIndex],_fileName];
-								_ctrlTree tvSetData [[_configFileIndex,_rootIndex,_subIndex,_fileIndex],str[_fileVar,_filePath]];
-							} forEach _subData;
-							[_configFileIndex,_rootIndex,_subIndex] call _finalizePath;
-						} foreach _rootData;
-						[_configFileIndex,_rootIndex] call _finalizePath;
-					} foreach _configData;
-					[_configFileIndex] call _finalizePath;
-				};
-				case 1:{
-					private _parents = [];
+								_x params ["_subName","_subData"];
+								private _subIndex = _ctrlTree tvAdd [[_configFileIndex,_rootIndex],_subName];
+								{
+									_x params ["_fileName","_fileVar","_filePath"];
+									private _fileIndex = _ctrlTree tvAdd [[_configFileIndex,_rootIndex,_subIndex],_fileName];
+									_ctrlTree tvSetData [[_configFileIndex,_rootIndex,_subIndex,_fileIndex],str[_fileVar,_filePath]];
+								} forEach _subData;
+								[_configFileIndex,_rootIndex,_subIndex] call _finalizePath;
+							} foreach _rootData;
+							[_configFileIndex,_rootIndex] call _finalizePath;
+						} foreach _configData;
+						[_configFileIndex] call _finalizePath;
+					};
+					case 1:{
+						private _parents = [];
 
-					{
-						_x params ["","_rootTag","_rootData"];
 						{
-							_x params ["_parentName","_parentData"];
-							private _parentIndex = if (tolower _parentName in _parents) then {
-								_parents find tolower _parentName
+							_x params ["","_rootTag","_rootData"];
+							{
+								_x params ["_parentName","_parentData"];
+								private _parentIndex = if (tolower _parentName in _parents) then {
+									_parents find tolower _parentName
+								} else {
+									private _index = _ctrlTree tvAdd [[],_parentName];
+									_parents set [_index,tolower _parentName];
+									_index
+								};
+								{
+									_x params ["_fileName","_fileVar","_filePath"];
+									private _fileIndex = _ctrlTree tvAdd [[_parentIndex],_fileVar];//format["%1 (%2)",_fileName,_rootTag]
+									_ctrlTree tvSetData [[_parentIndex,_fileIndex],str[_fileVar,_filePath]];
+								} forEach _parentData;
+								[_parentIndex] call _finalizePath;
+							} foreach _rootData;
+						} foreach _configData;
+						[] call _finalizePath;
+					};
+					case 2:{
+						private _tags = [];
+
+						{
+							_x params ["","_rootTag","_rootData"];
+							private _rootIndex = if (tolower _rootTag in _tags) then {
+								_tags find tolower _rootTag
 							} else {
-								private _index = _ctrlTree tvAdd [[],_parentName];
-								_parents set [_index,tolower _parentName];
+								private _index = _ctrlTree tvAdd [[],_rootTag];
+								_tags set [_index,tolower _rootTag];
 								_index
 							};
 							{
-								_x params ["_fileName","_fileVar","_filePath"];
-								private _fileIndex = _ctrlTree tvAdd [[_parentIndex],_fileVar];//format["%1 (%2)",_fileName,_rootTag]
-								_ctrlTree tvSetData [[_parentIndex,_fileIndex],str[_fileVar,_filePath]];
-							} forEach _parentData;
-							[_parentIndex] call _finalizePath;
-						} foreach _rootData;
-					} foreach _configData;
-					[] call _finalizePath;
-				};
-				case 2:{
-					private _tags = [];
-
-					{
-						_x params ["","_rootTag","_rootData"];
-						private _rootIndex = if (tolower _rootTag in _tags) then {
-							_tags find tolower _rootTag
-						} else {
-							private _index = _ctrlTree tvAdd [[],_rootTag];
-							_tags set [_index,tolower _rootTag];
-							_index
-						};
-						{
-							_x params ["","_subData"];
-							{
-								_x params ["_fileName","_fileVar","_filePath"];
-								private _fileIndex = _ctrlTree tvAdd [[_rootIndex],_fileName];
-								_ctrlTree tvSetData [[_rootIndex,_fileIndex],str[_fileVar,_filePath]];
-							} forEach _subData;
-						} foreach _rootData;
-						[_rootIndex] call _finalizePath;
-					} foreach _configData;
-					[] call _finalizePath;
-				};
-				case 3:{
-					private _history = profileNamespace getVariable [VAR_SELECTED_FUNC_HISTORY,[]];
-					if (count _history > 0) then {
-						private _loadedFuncs = [];
-
-						// Identify functions that exist so we don't list fuctions from mods that are no longer loaded
-						{
-							_x params ["","","_rootData"];
-							{
 								_x params ["","_subData"];
 								{
-									_x params ["","_fileVar","_filePath"];
-									if ([_fileVar,_filePath] in _history) then {
-										_loadedFuncs pushback [_fileVar,_filePath];
-									};
-								} foreach _subData;
+									_x params ["_fileName","_fileVar","_filePath"];
+									private _fileIndex = _ctrlTree tvAdd [[_rootIndex],_fileName];
+									_ctrlTree tvSetData [[_rootIndex,_fileIndex],str[_fileVar,_filePath]];
+								} forEach _subData;
 							} foreach _rootData;
+							[_rootIndex] call _finalizePath;
 						} foreach _configData;
-
-						// Add rows in the last viewed order
-						{
-							if (_x in _loadedFuncs) then {
+						[] call _finalizePath;
+					};
+					case 4:{
+						private _history = profileNamespace getVariable [VAR_SELECTED_FUNC_HISTORY,[]];
+						if (count _history > 0) then {
+							// Identify functions that exist so we don't list fuctions from mods that are no longer loaded
+							{
 								_x params ["_fileVar","_filePath"];
-								private _fileIndex = _ctrlTree tvAdd [[],_fileVar];
-								_ctrlTree tvSetData [[_fileIndex],str[_fileVar,_filePath]];
-							};
-						} forEach _history;
+
+								private _funcExists = !isNil {
+									if (
+										isNil {missionNameSpace getVariable _fileVar} &&
+										{isNil {uiNamespace getVariable _fileVar}}
+									) exitWith {};0
+								};
+
+								if _funcExists then {
+									private _fileIndex = _ctrlTree tvAdd [[],_fileVar];
+									_ctrlTree tvSetData [[_fileIndex],str[_fileVar,_filePath]];
+								};
+							} forEach _history;
+						};
 					};
 				};
+			} forEach [
+				[configFile,"configFile"] call _buildTreeData,
+				[campaignConfigFile,"campaignConfigFile"] call _buildTreeData,
+				[missionConfigFile,"missionConfigFile"] call _buildTreeData
+			];
+		} else {
+			// Unique load from display classes indirectly using CfgScriptPaths
+			private _configData = call {
+				private _treeData = [];
+
+				{
+					{
+						if (getNumber (_x >> "scriptIsInternal") isEqualTo 0) then {
+							private _scriptName = getText (_x >> "scriptName");
+							private _scriptPath = getText (_x >> "scriptPath");
+
+							if !("" in [_scriptName,_scriptPath]) then {
+								private _index = _treeData findIf {_x#0 == _scriptPath};
+								if (_index == -1) then {_index = _treeData pushBack [_scriptPath,[]]};
+								private _subData = _treeData#_index;
+
+								private _func = _scriptName + "_script";
+								private _file = format ["%1%2.sqf", getText (configFile >> "CfgScriptPaths" >> _scriptPath), _scriptName];
+
+								if (_noSearch || {
+									([_searchTerm,_func] call BIS_fnc_inString) ||
+									([_searchTerm,_file] call BIS_fnc_inString)
+								}) then {
+									//(_subData#1) pushback [["stringReplace",[str _x,"bin\config.bin","configFile"]] call THIS_FUNC,_func,_file];
+									(_subData#1) pushbackunique [_func,_func,_file];
+									_treeData set [_index,_subData];
+								};
+							};
+						};
+					} forEach ("isText (_x >> 'scriptPath')" configClasses _x);
+				} forEach [
+					configFile,
+					configFile >> "RscTitles",
+					configFile >> "RscInGameUI",
+					configFile >> "Cfg3DEN" >> "Attributes"
+				];
+
+				_treeData
 			};
-		} forEach [
-			[configFile,"configFile"] call _buildTreeData,
-			[campaignConfigFile,"campaignConfigFile"] call _buildTreeData,
-			[missionConfigFile,"missionConfigFile"] call _buildTreeData
-		];
+
+			private _paths = [];
+			{
+				_x params ["_path","_data"];
+				private _rootIndex = if (tolower _path in _paths) then {
+					_paths find tolower _path
+				} else {
+					private _index = _ctrlTree tvAdd [[],_path];
+					_paths set [_index,tolower _path];
+					_index
+				};
+				{
+					_x params ["_config","_func","_path"];
+					private _fileIndex = _ctrlTree tvAdd [[_rootIndex],_config];
+					_ctrlTree tvSetData [[_rootIndex,_fileIndex],str[_func,_path]];
+				} foreach _data;
+				[_rootIndex] call _finalizePath;
+			} foreach _configData;
+			[] call _finalizePath;
+		};
 
 		if !_noSearch then {
 			tvExpandAll _ctrlTree;
@@ -439,7 +494,7 @@ switch _mode do {
 
 			// Add function to history if not already viewing history
 			private _mode = profileNamespace getVariable [VAR_TREE_MODE,-1];
-			if (_mode != 3) then {
+			if (_mode != 4) then {
 				private _history = profileNamespace getVariable [VAR_SELECTED_FUNC_HISTORY,[]];
 				_history = ([_data] + (_history - [_data])) select [0,100]; // save last 100 viewed functions
 				profileNamespace setVariable [VAR_SELECTED_FUNC_HISTORY,_history];
@@ -624,7 +679,11 @@ switch _mode do {
 			case 1:{preprocessFile _file};
 			case 2:{preprocessFileLineNumbers _file};
 			case 3:{
-				private _var = str(missionNamespace getVariable [_func,{}]);
+				private _var = str(switch true do {
+					case !(isNil{missionNamespace getVariable _func}):{missionNamespace getVariable _func};
+					case !(isNil{uiNamespace getVariable _func}):{uiNamespace getVariable _func};
+					default {{}};
+				});
 				_var select [1,count _var - 2];
 			};
 			default {loadFile _file};
