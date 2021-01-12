@@ -40,16 +40,16 @@ Description:
 #define VAR_SAVED_FUNCS QUOTE(FUNC_SUBVAR(saved_func_vars))
 #define VAL_SAVED_FUNC_VAR(f) format["%1_%2",QUOTE(THIS_FUNC),f]
 
-#define VAL_LETTERS_LOWER ["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"]
-#define VAL_LETTERS_UPPER ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"]
-#define VAL_DIGITS ["1","2","3","4","5","6","7","8","9","0"]
+#define VAL_LETTERS_LOWER abcdefghijklmnopqrstuvwxyz
+#define VAL_LETTERS_UPPER ABCDEFGHIJKLMNOPQRSTUVWXYZ
+#define VAL_DIGITS 0123456789
 
-#define VAL_BRACKETS ["[","]","{","}","(",")"]
-#define VAL_QUOTES ["'",""""]
+#define VAL_BRACKETS "[]{}()"
+#define VAL_QUOTES "'"""
 
-#define VAL_LETTERS VAL_LETTERS_LOWER + VAL_LETTERS_UPPER
-#define VAL_VAR_CHARS ["_"] + VAL_LETTERS + VAL_DIGITS
-#define VAL_DIGIT_CHARS ["."] + VAL_DIGITS
+#define VAL_LETTERS VAL_LETTERS_LOWER##VAL_LETTERS_UPPER
+#define VAL_VAR_CHARS VAL_LETTERS##VAL_DIGITS##_
+#define VAL_DIGIT_CHARS VAL_DIGITS##.
 
 #define VAL_PREPROCESSOR ["include","define","undef","ifdef","ifndef","else","endif","line"]
 #define VAL_KEYWORDS ["case","catch","default","do","else","exit","exitwith","for","foreach","from","if","private","switch","then","throw","to","try","waituntil","while","with"]
@@ -183,7 +183,7 @@ switch _mode do {
 
 		private _supportedOperators = [];
 		private _supportedCommands = [];
-		private _varChars = VAL_VAR_CHARS;
+		private _varChars = QUOTE(VAL_VAR_CHARS);
 		{
 			if ((_x select [0,1]) != "t") then {
 				private _string = _x splitString ": ";
@@ -195,8 +195,8 @@ switch _mode do {
 				};
 
 				if (_string != "") then {
-					private _stringA = _string splitString "";
-					if ((_stringA-_varChars) isEqualTo []) then {
+					private _stringA = _string splitString _varChars;
+					if (_stringA isEqualTo []) then {
 						_supportedCommands pushBackUnique tolower _string;
 					} else {
 						_supportedOperators pushBackUnique tolower _string;
@@ -865,15 +865,36 @@ switch _mode do {
 				private _textArray = _text splitString "";
 				private _segment = "";
 
-				private _letters = VAL_LETTERS;
-				private _varChars = VAL_VAR_CHARS;
-				private _digitChars = VAL_DIGIT_CHARS;
-				private _spaceTab = [tostring[32],tostring[9]];
+				private _letters = QUOTE(VAL_LETTERS);
+				private _varChars = QUOTE(VAL_VAR_CHARS);
+				private _digitChars = QUOTE(VAL_DIGIT_CHARS);
+				private _spaceTab = tostring[32,9];
 				private _supportedOperators = _display getVariable ["supportedOperators",[]];
 				private _supportedCommands = _display getVariable ["supportedCommands",[]];
 
 				private _push = {
 					if (_segment != "") then {
+						private _type = switch true do {
+							case ((_segment select [0,2]) in ["/*","//"]):{"comment"};
+							case ((_segment select [0,1]) in ["'",""""]):{"string"};
+							case ((_segment select [0,1]) in _digitChars && {_segment splitstring _digitChars isEqualTo []}):{"number"};
+							case (tolower _segment in VAL_MAGIC_VARS):{"magicVar"};
+							case (_segment find "_" == 0 && {_segment splitstring _varChars isEqualTo []}):{"localVar"};
+							case ((["_fnc_",_segment select [1,count _segment - 2]] call BIS_fnc_inString) && {_segment splitstring _varChars isEqualTo []}):{"function"};
+							//case (_segment in VAL_BRACKETS):{"bracket"};
+							//case (_segment in _supportedOperators):{"operator"};
+							case (tolower _segment in VAL_PREPROCESSOR && {(_output param [count _output - 1,""]) == "#"}):{"preprocessor"};
+							case (tolower _segment in VAL_KEYWORDS):{"keyword"};
+							case (tolower _segment in VAL_LITERALS):{"literal"};
+							case (tolower _segment in VAL_NULLS):{"null"};
+							case (tolower _segment in _supportedCommands):{"command"};
+							case (_segment splitstring _varChars isEqualTo []):{"globalVar"};
+							default {""};
+						};
+						_segment = ["replaceStructuredCharacters",_segment] call THIS_FUNC;
+						if (_type != "") then {
+							_segment = "<t color='"+(["themeColour",_type] call THIS_FUNC)+"'>"+_segment+"</t>";
+						};
 						_output pushBack _segment;
 						_segment = "";
 					};
@@ -883,7 +904,7 @@ switch _mode do {
 
 				for "_i" from 0 to (_textLen - 1) do {
 					if (isNull _ctrlViewerLoadbar) then {terminate _thisScript};
-					_ctrlViewerLoadbarP set [2,linearConversion[0,_textLen,_i,0,0.75*_ctrlViewerLoadbarW,true]];
+					_ctrlViewerLoadbarP set [2,linearConversion[0,_textLen,_i,0,0.99*_ctrlViewerLoadbarW,true]];
 					_ctrlViewerLoadbar ctrlSetPosition _ctrlViewerLoadbarP;
 					_ctrlViewerLoadbar ctrlCommit 0;
 
@@ -894,8 +915,8 @@ switch _mode do {
 					switch true do {
 						case (_thisChar == "/" && _nextChar == "*"):{
 							call _push;
-							_segment = _text select [_i,_textLen];
-							_index = 4 + ((_segment select [2,count _segment]) find ("*/"));
+							_segment = _text select [_i];
+							_index = 4 + (_segment select [2] find ("*/"));
 							if (_index == -1) then {_index = count _segment};
 							_segment = _segment select [0,_index];
 							call _push;
@@ -903,7 +924,7 @@ switch _mode do {
 						};
 						case (_thisChar == "/" && _nextChar == "/"):{
 							call _push;
-							_segment = _text select [_i,_textLen];
+							_segment = _text select [_i];
 							_index = _segment find tostring[10];
 							if (_index == -1) then {_index = count _segment};
 							_segment = _segment select [0,_index];
@@ -912,8 +933,8 @@ switch _mode do {
 						};
 						case (_thisChar in VAL_QUOTES):{
 							call _push;
-							_segment = _text select [_i,_textLen];
-							_index = 2 + ((_segment select [1,count _segment]) find _thisChar);
+							_segment = _text select [_i];
+							_index = 2 + (_segment select [1] find _thisChar);
 							if (_index == -1) then {_index = count _segment};
 							_segment = _segment select [0,_index];
 							call _push;
@@ -922,22 +943,18 @@ switch _mode do {
 						case (_thisChar in _digitChars):{
 							call _push;
 							private _tmp_segment = _textArray select [_i,_textLen];
-							_tmp_segment = _tmp_segment select [0,count _tmp_segment];
 							_index = _tmp_segment findIf {!(_x in _digitChars)};
 							if (_index == -1) then {_index = count _tmp_segment};
-							// TODO: simplify double select
-							_segment = (_text select [_i,_textLen]) select [0,_index];
+							_segment = _text select [_i,_index];
 							call _push;
 							_i = _i + _index - 1;
 						};
 						case (_thisChar in _varChars):{
 							call _push;
 							private _tmp_segment = _textArray select [_i,_textLen];
-							_tmp_segment = _tmp_segment select [0,count _tmp_segment];
 							_index = _tmp_segment findIf {!(_x in _varChars)};
 							if (_index == -1) then {_index = count _tmp_segment};
-							// TODO: simplify double select
-							_segment = (_text select [_i,_textLen]) select [0,_index];
+							_segment = _text select [_i,_index];
 							call _push;
 							_i = _i + _index - 1;
 						};
@@ -962,36 +979,6 @@ switch _mode do {
 				call _push;
 
 				private _outputLen = count _output - 1;
-				{
-					if (isNull _ctrlViewerLoadbar) then {terminate _thisScript};
-					_ctrlViewerLoadbarP set [2,linearConversion[0,_outputLen,_forEachIndex,0.75*_ctrlViewerLoadbarW,0.99*_ctrlViewerLoadbarW,true]];
-					_ctrlViewerLoadbar ctrlSetPosition _ctrlViewerLoadbarP;
-					_ctrlViewerLoadbar ctrlCommit 0;
-
-					private _type = switch true do {
-						case ((_x select [0,2]) in ["/*","//"]):{"comment"};
-						case ((_x select [0,1]) in ["'",""""]):{"string"};
-						case ((_x select [0,1]) in _digitChars && {((_x splitstring "") - _digitChars) isEqualTo []}):{"number"};
-						case (tolower _x in VAL_MAGIC_VARS):{"magicVar"};
-						case ((_x select [0,1]) in ["_"] && {((_x splitstring "") - _varChars) isEqualTo []}):{"localVar"};
-						case ((["_fnc_",_x select [1,count _x - 2]] call BIS_fnc_inString) && {((_x splitstring "") - _varChars) isEqualTo []}):{"function"};
-						//case (_x in VAL_BRACKETS):{"bracket"};
-						//case (_x in _supportedOperators):{"operator"};
-						case (tolower _x in VAL_PREPROCESSOR && {(_output param [_forEachIndex - 1,""]) == "#"}):{"preprocessor"};
-						case (tolower _x in VAL_KEYWORDS):{"keyword"};
-						case (tolower _x in VAL_LITERALS):{"literal"};
-						case (tolower _x in VAL_NULLS):{"null"};
-						case (tolower _x in _supportedCommands):{"command"};
-						case (((_x splitstring "") - _varChars) isEqualTo []):{"globalVar"};
-						default {""};
-					};
-					_x = ["replaceStructuredCharacters",_x] call THIS_FUNC;
-					_output set [_forEachIndex,
-						if (_type == "") then {_x} else {
-							"<t color='"+(["themeColour",_type] call THIS_FUNC)+"'>"+_x+"</t>"
-						}
-					];
-				} foreach _output;
 
 				_output = ["stringReplace",[_output joinstring "",tostring[13],""]] call THIS_FUNC;
 				// blank lines dont maintain original line height on modified sizes
@@ -1247,7 +1234,7 @@ switch _mode do {
 			if (_index < 0) exitwith {_output pushback _input;};
 			_output pushback (_input select [0,_index]);
 			_output pushback _replace;
-			_input = _input select [_index + _findLen,count _input];
+			_input = _input select [_index + _findLen];
 		};
 		_output joinString ""
 	};
@@ -1261,7 +1248,7 @@ switch _mode do {
 			_index = tolower _input find _find;
 			if (_index < 0) exitwith {_output pushback _input;};
 			_output pushback (_input select [0,_index]);
-			_input = _input select [_index + _findLen,count _input];
+			_input = _input select [_index + _findLen];
 		};
 		_output
 	};
@@ -1271,7 +1258,7 @@ switch _mode do {
 	};
 	case "stringEndsWith":{
 		_params params ["_string","_search"];
-		(_string select [count _string - count _search,count _search]) == _search;
+		(_string select [count _string - count _search]) == _search;
 	};
 	case "stringCount":{
 		_params params ["_input","_find"];
@@ -1283,7 +1270,7 @@ switch _mode do {
 			_index = tolower _input find _find;
 			if (_index < 0) exitwith {};
 			_found = _found + 1;
-			_input = _input select [_index + _findLen,count _input];
+			_input = _input select [_index + _findLen];
 		};
 		_found
 	};
